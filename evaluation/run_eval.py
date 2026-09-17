@@ -163,6 +163,13 @@ def main(argv=None, client=None):
             row["shape_warnings"] = (
                 "" if validation is None else validation.shape_warning_count)
             row["quiz_seeds"] = ",".join(str(s) for s in result.quiz_seeds)
+            # Which generation path produced this quiz. Appended last,
+            # like the columns above it, so nothing already read by the
+            # evaluation workbook shifts position. Without it a results
+            # file cannot be attributed to a path once the folders are
+            # merged, and the before-and-after comparison is the whole
+            # point of the structured path existing.
+            row["quiz_structured"] = result.quiz_structured
             rows.append(row)
             print(f"  saved {path} ({result.total_seconds:.2f}s)")
 

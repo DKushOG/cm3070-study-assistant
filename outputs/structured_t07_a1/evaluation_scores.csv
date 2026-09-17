@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds,quiz_structured
+Transcript only,1,5.74,5.16,10.90,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194304_755564_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,1,2.25,2.80,5.05,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194309_806879_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,1,2.34,5.29,7.63,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194317_445050_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",1,2.69,6.40,9.09,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194326_537735_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,2,2.13,2.83,4.96,llama3.2,0.7,,,5,True,1,False,outputs/structured_t07_a1\20260917_194331_502872_transcript_only.txt,,,,,,,0,0,1,,True
+Slide text only,2,1.79,6.46,8.25,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194339_751958_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,2,2.24,2.90,5.14,llama3.2,0.7,,,5,True,1,False,outputs/structured_t07_a1\20260917_194344_894408_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",2,2.85,4.32,7.17,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194352_066750_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,3,2.01,7.45,9.46,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194401_527560_transcript_only.txt,,,,,,,0,0,1,,True
+Slide text only,3,1.92,2.73,4.66,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194406_183868_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,3,2.94,4.14,7.08,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194413_266661_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",3,2.83,2.74,5.57,llama3.2,0.7,,,5,True,1,True,outputs/structured_t07_a1\20260917_194418_838906_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True

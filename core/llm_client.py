@@ -48,7 +48,7 @@ class LLMClient:
             kwargs["seed"] = self.seed
         return kwargs
 
-    def _request_kwargs(self, prompt):
+    def _request_kwargs(self, prompt, response_format=None):
         """Assemble the keyword arguments for one text completion call.
 
         Kept as a separate method with no network dependency so the tests
@@ -56,11 +56,20 @@ class LLMClient:
         set, without a real model. This is the seam the reproducibility
         tests exercise, and its output must stay byte-identical to the
         request the evaluated prototype sent.
+
+        response_format follows the same "None means unset" rule: it is
+        omitted from the request entirely unless a caller asks for it, so an
+        unstructured call reproduces the evaluated prototype exactly. This is
+        what keeps the legacy quiz path and the structured quiz path directly
+        comparable, because only one thing differs between them.
         """
-        return self._apply_settings({
+        kwargs = self._apply_settings({
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
         })
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        return kwargs
 
     def _image_request_kwargs(self, prompt, images):
         """Assemble the keyword arguments for one multimodal call.
@@ -94,17 +103,20 @@ class LLMClient:
                                   timeout=self.timeout)
         return self._client
 
-    def chat(self, prompt):
+    def chat(self, prompt, response_format=None):
         """Send a single user message and return the reply text.
 
         Works with OpenAI as well as any OpenAI compatible endpoint such as
         a local Ollama server, so the model can be swapped through the .env
         file without changing the code.
+
+        Pass response_format to constrain decoding, for example a JSON schema
+        for the quiz call. Omitting it leaves the request unchanged.
         """
         client = self._get_client()
         try:
             response = client.chat.completions.create(
-                **self._request_kwargs(prompt))
+                **self._request_kwargs(prompt, response_format))
         except Exception as error:
             raise RuntimeError(f"Model call failed: {error}") from error
         return (response.choices[0].message.content or "").strip()

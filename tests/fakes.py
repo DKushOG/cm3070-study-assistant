@@ -20,6 +20,7 @@ class FakeLLMClient:
         self.prompts = []
         self.image_calls = []
         self.seeds_used = []
+        self.response_formats = []
         self.reachable = reachable
         self._replies = list(replies) if replies else ["FAKE NOTES",
                                                        "FAKE QUIZ"]
@@ -32,8 +33,13 @@ class FakeLLMClient:
         index = min(len(self.prompts) - 1, len(self._replies) - 1)
         return self._replies[index]
 
-    def chat(self, prompt):
+    def chat(self, prompt, response_format=None):
         self.prompts.append(prompt)
+        # Record the response_format each call was issued with, so a test can
+        # assert that the structured path attaches a schema and the legacy
+        # path attaches nothing at all. None entries mean an unconstrained
+        # call, which is what the evaluated prototype sent.
+        self.response_formats.append(response_format)
         # Record the seed in force for this call. The retry path issues later
         # attempts through a shallow copy carrying a different seed, so this is
         # what lets a test assert that the seeds varied while the prompt bytes
@@ -44,6 +50,7 @@ class FakeLLMClient:
     def chat_with_images(self, prompt, images):
         self.image_calls.append((prompt, list(images)))
         self.prompts.append(prompt)
+        self.response_formats.append(None)
         return self._next_reply()
 
     def check_model_available(self, timeout=5.0):

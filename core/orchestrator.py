@@ -25,8 +25,11 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
+import config
 from core.context_builder import build_context_with_report, mode_name
-from core.generation import generate_revision_notes, generate_quiz_questions
+from core.generation import (generate_revision_notes,
+                             generate_quiz_questions,
+                             generate_quiz_structured)
 from core.quiz_validation import validate_quiz
 
 
@@ -64,6 +67,11 @@ class PipelineResult:
     # Set when retries provably cannot differ, so wasted attempts are reported
     # rather than silently burned.
     quiz_retry_note: str = None
+    # Which generation path produced the quiz: the prompt-and-check path or
+    # the schema-constrained path. Recorded on every run so a saved output can
+    # always be attributed to one path, which is what makes the before-and-
+    # after comparison in the evaluation defensible.
+    quiz_structured: bool = False
 
     @property
     def total_seconds(self):
@@ -147,7 +155,7 @@ def _retry_determinism_note(client, quiz_max_attempts):
 
 def run_pipeline(client, transcript=None, slide_text=None, notes=None,
                  max_words=None, slide_source=None, transcript_source=None,
-                 quiz_max_attempts=1):
+                 quiz_max_attempts=1, quiz_structured=None):
     """Run the two-call pipeline once and validate the resulting quiz.
 
     quiz_max_attempts defaults to 1: the quiz is generated exactly once and
@@ -156,7 +164,16 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
     regenerated using the identical unchanged prompt. If every attempt fails,
     the last attempt is kept, which is what "regenerate" plainly means and
     avoids inventing a ranking heuristic between two bad outputs.
+
+    quiz_structured selects the generation path. None means "take the
+    configured default", which is off, so the legacy prompt-and-check path
+    remains the reference condition. Passing True issues the quiz call under a
+    JSON schema instead. Both paths produce the same four-line text and are
+    validated by the same unchanged validator.
     """
+    if quiz_structured is None:
+        quiz_structured = config.QUIZ_STRUCTURED
+
     context, truncation = build_context_with_report(
         transcript=transcript, slide_text=slide_text, notes=notes,
         max_words=max_words)
@@ -179,7 +196,12 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
         attempt_client, attempt_seed = _client_for_attempt(client, attempt)
         if attempt_seed is not None:
             seeds.append(attempt_seed)
-        quiz = generate_quiz_questions(attempt_client, context, revision_notes)
+        if quiz_structured:
+            quiz = generate_quiz_structured(attempt_client, context,
+                                            revision_notes)
+        else:
+            quiz = generate_quiz_questions(attempt_client, context,
+                                           revision_notes)
         validation = validate_quiz(quiz)
         if validation.passed:
             break
@@ -206,6 +228,7 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
         quiz_validation=validation,
         quiz_seeds=seeds,
         quiz_retry_note=_retry_determinism_note(client, quiz_max_attempts),
+        quiz_structured=quiz_structured,
     )
 
 

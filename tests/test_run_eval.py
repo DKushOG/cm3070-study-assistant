@@ -171,12 +171,12 @@ class RepeatsAndColumnsTests(unittest.TestCase):
             with open(os.path.join(out, "evaluation_scores.csv"),
                       newline="", encoding="utf-8") as handle:
                 columns = next(csv.reader(handle))
-        self.assertEqual(columns[-4:], [
+        self.assertEqual(columns[-5:], [
             "invalid_source_basis", "generated_notes_basis",
-            "shape_warnings", "quiz_seeds",
+            "shape_warnings", "quiz_seeds", "quiz_structured",
         ])
         rubric_names = [key for key, _description in CRITERIA]
-        self.assertEqual(columns[-4 - len(rubric_names):-4], rubric_names)
+        self.assertEqual(columns[-5 - len(rubric_names):-5], rubric_names)
 
     def test_rubric_columns_stay_blank_for_manual_scoring(self):
         client = FakeLLMClient()

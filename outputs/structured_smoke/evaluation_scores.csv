@@ -1,0 +1,5 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds,quiz_structured
+Transcript only,1,7.71,4.78,12.49,llama3.2,0.0,,,5,True,1,True,outputs/structured_smoke\20260917_193931_299782_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,1,1.83,3.93,5.77,llama3.2,0.0,,,5,True,1,True,outputs/structured_smoke\20260917_193937_066081_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,1,2.18,5.18,7.37,llama3.2,0.0,,,5,True,1,True,outputs/structured_smoke\20260917_193944_436733_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",1,2.58,4.85,7.43,llama3.2,0.0,,,5,True,1,True,outputs/structured_smoke\20260917_193951_863524_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True

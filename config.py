@@ -82,6 +82,14 @@ LLM_TIMEOUT = _get_float("LLM_TIMEOUT", 600.0)
 # setting.
 QUIZ_MAX_ATTEMPTS = _get_int("QUIZ_MAX_ATTEMPTS", 1)
 
+# Structured quiz generation. Off by default so the legacy prompt-and-check
+# path stays the reference condition for the before-and-after comparison, and
+# so an existing deployment keeps the behaviour that was evaluated. When on,
+# the quiz call is issued under a JSON schema that makes the four required
+# fields structurally mandatory rather than merely requested.
+QUIZ_STRUCTURED = os.getenv("QUIZ_STRUCTURED", "").strip().lower() in (
+    "1", "true", "yes", "on")
+
 # Optional per-source word cap for the prompt context. Unset by default,
 # meaning no limit and today's exact behaviour. When set, each source
 # (transcript, slide text, notes) is independently truncated to at most this
