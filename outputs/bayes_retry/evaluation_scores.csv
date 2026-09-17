@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds
+Transcript only,1,8.42,7.74,16.16,llama3.2,0.0,,,5,True,3,False,outputs\bayes_retry\20260818_013853_637345_transcript_only.txt,,,,,,,0,2,0,
+Slide text only,1,2.59,10.36,12.94,llama3.2,0.0,,,5,True,3,False,outputs\bayes_retry\20260818_013906_582088_slide_text_only.txt,,,,,,,0,0,0,
+Combined transcript and slide text,1,2.07,5.91,7.98,llama3.2,0.0,,,7,False,3,False,outputs\bayes_retry\20260818_013914_563422_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,
+"Transcript, slide text and notes",1,2.55,8.98,11.52,llama3.2,0.0,,,4,False,3,False,outputs\bayes_retry\20260818_013926_089381_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,
+Transcript only,2,2.32,7.11,9.42,llama3.2,0.0,,,5,True,3,False,outputs\bayes_retry\20260818_013935_513670_transcript_only.txt,,,,,,,0,0,0,
+Slide text only,2,2.55,7.86,10.41,llama3.2,0.0,,,4,False,3,False,outputs\bayes_retry\20260818_013945_921347_slide_text_only.txt,,,,,,,0,2,0,
+Combined transcript and slide text,2,2.11,6.22,8.33,llama3.2,0.0,,,7,False,3,False,outputs\bayes_retry\20260818_013954_252366_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,
+"Transcript, slide text and notes",2,2.47,9.24,11.71,llama3.2,0.0,,,4,False,3,False,outputs\bayes_retry\20260818_014005_968067_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,
+Transcript only,3,2.37,7.31,9.68,llama3.2,0.0,,,5,True,3,False,outputs\bayes_retry\20260818_014015_651110_transcript_only.txt,,,,,,,0,0,0,
+Slide text only,3,2.43,8.65,11.07,llama3.2,0.0,,,4,False,3,False,outputs\bayes_retry\20260818_014026_729461_slide_text_only.txt,,,,,,,0,2,0,
+Combined transcript and slide text,3,2.16,6.19,8.35,llama3.2,0.0,,,7,False,3,False,outputs\bayes_retry\20260818_014035_079220_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,
+"Transcript, slide text and notes",3,2.47,9.36,11.84,llama3.2,0.0,,,4,False,3,False,outputs\bayes_retry\20260818_014046_918558_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,

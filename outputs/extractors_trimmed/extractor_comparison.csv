@@ -1,0 +1,5 @@
+Slide set,Pages,Extraction path,Missing text (1 to 5),Incorrect text (1 to 5),Structure kept (1 to 5),Overall (1 to 5),Notes,Character count,Word count,Seconds elapsed,Model used,Output text file
+CM3060 L6 Bayes extract,5,Native pptx (python-pptx),,,,,,2053,328,0.02,python-pptx parser,outputs\extractors_trimmed\20260818_004610_284035_CM3060 L6 Bayes extract_native_pptx_python-pptx.txt
+CM3060 L6 Bayes extract,5,pypdf (embedded text layer),,,,,,2478,396,0.09,pypdf text layer,outputs\extractors_trimmed\20260818_004610_376041_CM3060 L6 Bayes extract_pypdf_embedded_text_layer.txt
+CM3060 L6 Bayes extract,5,Tesseract OCR,,,,,,2819,454,3.37,Tesseract OCR engine,outputs\extractors_trimmed\20260818_004613_753305_CM3060 L6 Bayes extract_tesseract_ocr.txt
+CM3060 L6 Bayes extract,5,Vision model,,,,,,1763,286,107.34,qwen3-vl:4b,outputs\extractors_trimmed\20260818_004801_092575_CM3060 L6 Bayes extract_vision_model.txt

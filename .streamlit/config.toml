@@ -1,0 +1,11 @@
+# Streamlit's default upload cap is 200 MB, which rejects a full-length
+# lecture recording: a 50 minute screen-recorded lecture in mp4 is commonly
+# 375 to 1100 MB. Since accepting an unmodified recording is the point of the
+# mp4 support, the cap is raised here rather than asking the student to
+# extract the audio first.
+#
+# Trade-off, recorded for the report: Streamlit buffers an upload in the
+# server process, so a file near this cap causes a transient memory spike of
+# roughly the file size. The value is a deliberate ceiling, not "unlimited".
+[server]
+maxUploadSize = 2000

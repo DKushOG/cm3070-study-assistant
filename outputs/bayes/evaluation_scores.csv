@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds
+Transcript only,1,9.60,2.73,12.33,llama3.2,0.0,42,Vision model,5,True,1,False,outputs\bayes\20260818_010850_368041_transcript_only.txt,,,,,,,0,0,0,42
+Slide text only,1,2.65,3.60,6.25,llama3.2,0.0,42,Vision model,5,True,1,False,outputs\bayes\20260818_010856_619113_slide_text_only.txt,,,,,,,0,0,0,42
+Combined transcript and slide text,1,2.09,2.06,4.14,llama3.2,0.0,42,Vision model,7,False,1,False,outputs\bayes\20260818_010900_763470_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,42
+"Transcript, slide text and notes",1,2.48,3.05,5.53,llama3.2,0.0,42,Vision model,4,False,1,False,outputs\bayes\20260818_010906_297115_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,42
+Transcript only,2,2.31,2.50,4.81,llama3.2,0.0,42,Vision model,5,True,1,False,outputs\bayes\20260818_010911_103576_transcript_only.txt,,,,,,,0,0,0,42
+Slide text only,2,2.45,2.13,4.59,llama3.2,0.0,42,Vision model,3,False,1,False,outputs\bayes\20260818_010915_690521_slide_text_only.txt,,,,,,,0,1,0,42
+Combined transcript and slide text,2,2.07,2.16,4.23,llama3.2,0.0,42,Vision model,7,False,1,False,outputs\bayes\20260818_010919_920132_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,42
+"Transcript, slide text and notes",2,2.66,3.19,5.84,llama3.2,0.0,42,Vision model,4,False,1,False,outputs\bayes\20260818_010925_762302_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,42
+Transcript only,3,2.42,2.36,4.78,llama3.2,0.0,42,Vision model,5,True,1,False,outputs\bayes\20260818_010930_544590_transcript_only.txt,,,,,,,0,0,0,42
+Slide text only,3,2.41,2.74,5.15,llama3.2,0.0,42,Vision model,4,False,1,False,outputs\bayes\20260818_010935_697894_slide_text_only.txt,,,,,,,0,2,0,42
+Combined transcript and slide text,3,2.08,2.11,4.19,llama3.2,0.0,42,Vision model,7,False,1,False,outputs\bayes\20260818_010939_889017_combined_transcript_and_slide_text.txt,,,,,,,0,1,0,42
+"Transcript, slide text and notes",3,2.55,3.08,5.63,llama3.2,0.0,42,Vision model,4,False,1,False,outputs\bayes\20260818_010945_520647_transcript_slide_text_and_notes.txt,,,,,,,0,1,1,42

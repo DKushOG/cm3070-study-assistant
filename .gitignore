@@ -1,0 +1,36 @@
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# --- Secrets and local configuration ---------------------------------------
+.env
+.streamlit/secrets.toml
+
+# --- Virtual environments ---------------------------------------------------
+.venv/
+venv/
+
+# --- OS and editor noise -----------------------------------------------------
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Evaluation corpus -------------------------------------------------------
+# The lecture material this project was evaluated on is copyright teaching
+# material, and the transcripts contain a lecturer's recorded speech. It is
+# deliberately not redistributed in the public repository. That is the same
+# reasoning that made the whole pipeline run locally in the first place, so
+# publishing it here would contradict the project's own stated position.
+#
+# The README explains the folder layout so that anyone can supply their own
+# lecture material and reproduce the pipeline.
+samples/*.txt
+topics/
+whisper_*.txt
+outputs/*.txt
+outputs/**/*.txt
+
+# Measurement files are tracked on purpose. A CSV of word error rates,
+# extraction timings and validator counts carries no course content, and it is
+# the evidence behind the evaluation chapter.

@@ -1,0 +1,14 @@
+streamlit
+openai>=1.50
+python-dotenv
+
+# Optional input-processing extras. The app runs without any of these; each
+# input module checks availability and degrades gracefully. Install the ones
+# you need:
+# openai-whisper      # speech-to-text (also install ffmpeg on the system)
+# pypdf               # text extraction from digital PDFs
+# pytesseract         # OCR (also install the Tesseract engine on the system)
+# Pillow              # image handling for OCR
+# pymupdf             # render PDF pages to images for the vision model (pure pip)
+# python-pptx         # native PowerPoint text extraction (pure pip)
+# jiwer               # word error rate for transcription evaluation
