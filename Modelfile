@@ -1,0 +1,24 @@
+# Pins the runtime context window.
+#
+# llama3.2 declares a 131072 token context, but Ollama allocates its own
+# default at load time when no num_ctx is set. Measured with probe_context.py,
+# that default is about 4096 tokens on this machine: a codeword placed at the
+# front of the prompt was still recalled at roughly 3950 tokens and was gone by
+# 6570.
+#
+# Ollama discards the FRONT of an oversized prompt and reports nothing. The
+# context builder assembles transcript, then slide text, then notes, so the
+# transcript is always what is lost first. Left unpinned, the largest deck in
+# the evaluation corpus would silently degenerate into a slide-only run while
+# still being labelled as a combined run.
+#
+# 16384 is chosen with headroom rather than to fit exactly. The quiz call is
+# the larger of the two model calls because it receives the assembled context
+# plus the generated notes, giving a worst case near 6700 tokens on the largest
+# deck.
+#
+# Build with:  ollama create llama3.2-ctx16k -f Modelfile
+# Then set:    OPENAI_MODEL=llama3.2-ctx16k   in .env
+
+FROM llama3.2
+PARAMETER num_ctx 16384
