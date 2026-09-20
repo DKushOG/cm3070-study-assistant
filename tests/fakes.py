@@ -16,11 +16,19 @@ without a real model or any real image.
 
 class FakeLLMClient:
     def __init__(self, replies=None, model=None, base_url=None,
-                 temperature=None, seed=None, reachable=True):
+                 temperature=None, seed=None, reachable=True,
+                 finish_reasons=None):
         self.prompts = []
         self.image_calls = []
         self.seeds_used = []
         self.response_formats = []
+        # Recorded per image call so a test can assert that the extraction
+        # path passes a token cap, without needing a real model to enforce it.
+        self.max_tokens_used = []
+        # Consumed in step with the image calls. Supplying "length" simulates
+        # a page that stopped because it ran out of room, which is the failure
+        # the vision path now has to detect rather than pass through.
+        self._finish_reasons = list(finish_reasons) if finish_reasons else []
         self.reachable = reachable
         self._replies = list(replies) if replies else ["FAKE NOTES",
                                                        "FAKE QUIZ"]
@@ -47,11 +55,28 @@ class FakeLLMClient:
         self.seeds_used.append(self.seed)
         return self._next_reply()
 
-    def chat_with_images(self, prompt, images):
+    def chat_with_images(self, prompt, images, max_tokens=None,
+                         with_meta=False):
+        """Mirror the real vision method, including its metadata mode.
+
+        Replies still advance with every call, retries included, so a test
+        can queue an empty first reply and a good second one and assert that
+        the retry recovered the page.
+        """
         self.image_calls.append((prompt, list(images)))
         self.prompts.append(prompt)
         self.response_formats.append(None)
-        return self._next_reply()
+        self.max_tokens_used.append(max_tokens)
+        reply = self._next_reply()
+        if not with_meta:
+            return reply
+        if self._finish_reasons:
+            position = min(len(self.image_calls) - 1,
+                           len(self._finish_reasons) - 1)
+            finish = self._finish_reasons[position]
+        else:
+            finish = "stop"
+        return reply, {"finish_reason": finish, "completion_tokens": None}
 
     def check_model_available(self, timeout=5.0):
         """Stand in for the real pre-flight probe without any network call."""

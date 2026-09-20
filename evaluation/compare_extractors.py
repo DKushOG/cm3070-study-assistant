@@ -70,6 +70,14 @@ AUTO_COLUMNS = [
     "Word count",
     "Seconds elapsed",
     "Model used",
+    # Blank for every path but the vision one, which is the only path that can
+    # fail per page without raising. Recorded next to the word count because
+    # a word count computed over an output with empty pages in it is not
+    # comparable to one computed over a complete extraction, and reading the
+    # two columns together is the only way to notice.
+    "Unreadable pages",
+    "Truncated pages",
+    "Retries spent",
     "Output text file",
 ]
 CSV_COLUMNS = MANUAL_COLUMNS + AUTO_COLUMNS
@@ -141,11 +149,20 @@ def _ocr_shared_images(images):
     return "\n\n".join(parts).strip()
 
 
-def _run_path(name, input_path, pdf_path, suffix, images, client):
+def _run_path(name, input_path, pdf_path, suffix, images, client,
+              report_out=None):
     """Run one extraction path and return (text, model_used).
 
     pdf_path is the original file for a PDF input and the LibreOffice
     conversion for a pptx, so the PDF text layer path is identical either way.
+
+    report_out, when a dictionary is supplied, is filled with the vision
+    path's per-page report: which pages could not be read, which were cut
+    short, and how many retries were spent. It is optional so the signature
+    stays compatible, but it should always be passed here. Without it this
+    harness cannot tell an empty reply from a blank slide, and that is
+    precisely how the comparison in the draft report came to be computed over
+    an output in which 15 of 36 pages were empty.
     """
     if name == NATIVE_PPTX_PATH:
         # Speaker notes stay off: see the module docstring's fairness note.
@@ -158,7 +175,11 @@ def _run_path(name, input_path, pdf_path, suffix, images, client):
             return slides_ocr.ocr_image(input_path), "Tesseract OCR engine"
         return _ocr_shared_images(images), "Tesseract OCR engine"
     if name == VISION_PATH:
-        return slide_vision.extract_from_images(images, client), client.model
+        text, report = slide_vision.extract_from_images_with_report(
+            images, client)
+        if report_out is not None:
+            report_out.update(report)
+        return text, client.model
     raise ValueError(f"Unknown extraction path '{name}'.")
 
 
@@ -259,8 +280,9 @@ def main(argv=None, client=None):
         for name in runnable:
             print(f"Running extraction path: {name}")
             start = time.perf_counter()
+            report = {}
             text, model_used = _run_path(name, args.input, pdf_path, suffix,
-                                         images, client)
+                                         images, client, report_out=report)
             elapsed = time.perf_counter() - start
             out_file = _save_text(args.out, slide_set, name, text)
             row = {column: "" for column in CSV_COLUMNS}
@@ -271,10 +293,22 @@ def main(argv=None, client=None):
             row["Word count"] = len(text.split())
             row["Seconds elapsed"] = f"{elapsed:.2f}"
             row["Model used"] = model_used
+            if report:
+                unreadable = report.get("unreadable_pages") or []
+                truncated = report.get("truncated_pages") or []
+                row["Unreadable pages"] = len(unreadable)
+                row["Truncated pages"] = len(truncated)
+                row["Retries spent"] = report.get("retries", 0)
             row["Output text file"] = out_file
             rows.append(row)
             print(f"  saved {out_file} "
                   f"({elapsed:.2f}s, {len(text.split())} words)")
+            note = slide_vision.describe_report(report)
+            if note:
+                # Printed rather than buried in the sheet, because an
+                # extraction with missing pages must not look like a clean run
+                # while it is happening.
+                print(f"  WARNING: {note}")
 
     csv_path = os.path.join(args.out, "extractor_comparison.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:

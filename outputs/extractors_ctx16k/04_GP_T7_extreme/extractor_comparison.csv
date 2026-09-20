@@ -1,0 +1,5 @@
+Slide set,Pages,Extraction path,Missing text (1 to 5),Incorrect text (1 to 5),Structure kept (1 to 5),Overall (1 to 5),Notes,Character count,Word count,Seconds elapsed,Model used,Unreadable pages,Truncated pages,Retries spent,Output text file
+CM2030_GP_PPT7-CourseraWeeks13&14,15,Native pptx (python-pptx),,,,,,6318,748,0.02,python-pptx parser,,,,outputs\extractors_ctx16k\04_GP_T7_extreme\20260920_214757_077496_CM2030_GP_PPT7-CourseraWeeks13&14_native_pptx_python-pptx.txt
+CM2030_GP_PPT7-CourseraWeeks13&14,15,pypdf (embedded text layer),,,,,,5998,675,0.06,pypdf text layer,,,,outputs\extractors_ctx16k\04_GP_T7_extreme\20260920_214757_137402_CM2030_GP_PPT7-CourseraWeeks13&14_pypdf_embedded_text_layer.txt
+CM2030_GP_PPT7-CourseraWeeks13&14,15,Tesseract OCR,,,,,,9093,1373,5.67,Tesseract OCR engine,,,,outputs\extractors_ctx16k\04_GP_T7_extreme\20260920_214802_814669_CM2030_GP_PPT7-CourseraWeeks13&14_tesseract_ocr.txt
+CM2030_GP_PPT7-CourseraWeeks13&14,15,Vision model,,,,,,11004,1789,97.47,qwen2.5vl:7b,0,0,0,outputs\extractors_ctx16k\04_GP_T7_extreme\20260920_214940_285699_CM2030_GP_PPT7-CourseraWeeks13&14_vision_model.txt

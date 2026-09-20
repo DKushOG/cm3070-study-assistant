@@ -71,21 +71,31 @@ class LLMClient:
             kwargs["response_format"] = response_format
         return kwargs
 
-    def _image_request_kwargs(self, prompt, images):
+    def _image_request_kwargs(self, prompt, images, max_tokens=None):
         """Assemble the keyword arguments for one multimodal call.
 
         Uses the OpenAI multimodal content array: one text part followed by
         one image_url part per image, where each image is a base64 data URL.
         Ollama's OpenAI-compatible endpoint accepts this shape, so a vision
         model reuses the same client rather than needing new architecture.
+
+        max_tokens follows the same "None means unset" rule as temperature
+        and seed, so an unbounded call stays byte-identical to the request
+        the evaluated prototype sent. It exists because a vision model that
+        loses its way on a dense slide will otherwise generate until the
+        context window is exhausted, which was measured at 14641 tokens and
+        nearly three minutes for one page, returning nothing at the end of it.
         """
         content = [{"type": "text", "text": prompt}]
         for url in images:
             content.append({"type": "image_url", "image_url": {"url": url}})
-        return self._apply_settings({
+        kwargs = self._apply_settings({
             "model": self.model,
             "messages": [{"role": "user", "content": content}],
         })
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        return kwargs
 
     def _get_client(self):
         """Return the cached OpenAI client, importing and building it on
@@ -157,18 +167,39 @@ class LLMClient:
             f"Model '{self.model}' is not available at {self.base_url}. "
             f"Pull it with: ollama pull {self.model}")
 
-    def chat_with_images(self, prompt, images):
+    def chat_with_images(self, prompt, images, max_tokens=None,
+                         with_meta=False):
         """Send a prompt plus one or more images and return the reply text.
 
         images is a list of base64 data URLs (e.g. "data:image/png;base64,..").
         This is the vision path used for slide-image extraction; it reuses the
         same client, timeout and reproducibility settings as chat(), and does
         not alter chat() itself, so existing text generation stays unchanged.
+
+        with_meta returns (text, meta) instead of text alone, where meta
+        carries the finish reason and the completion token count. The default
+        is off so every existing caller is unaffected.
+
+        The metadata matters more than it looks. A vision model that runs out
+        of room returns an empty string with no exception raised, and an empty
+        string is indistinguishable from a blank slide. Until this method
+        could report a finish reason, the pipeline had no way to tell the
+        difference, and 49 of 111 slides were recorded as successfully
+        extracted when in fact nothing had come back.
         """
         client = self._get_client()
         try:
             response = client.chat.completions.create(
-                **self._image_request_kwargs(prompt, images))
+                **self._image_request_kwargs(prompt, images, max_tokens))
         except Exception as error:
             raise RuntimeError(f"Model call failed: {error}") from error
-        return (response.choices[0].message.content or "").strip()
+        choice = response.choices[0]
+        text = (choice.message.content or "").strip()
+        if not with_meta:
+            return text
+        usage = getattr(response, "usage", None)
+        meta = {
+            "finish_reason": getattr(choice, "finish_reason", None),
+            "completion_tokens": getattr(usage, "completion_tokens", None),
+        }
+        return text, meta

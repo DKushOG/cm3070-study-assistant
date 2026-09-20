@@ -1,0 +1,5 @@
+Slide set,Pages,Extraction path,Missing text (1 to 5),Incorrect text (1 to 5),Structure kept (1 to 5),Overall (1 to 5),Notes,Character count,Word count,Seconds elapsed,Model used,Unreadable pages,Truncated pages,Retries spent,Output text file
+CM3060 L6,36,Native pptx (python-pptx),,,,,,13535,2104,0.03,python-pptx parser,,,,outputs\extractors_ctx16k\CM3060_L6_draft_deck\20260920_212756_315248_CM3060 L6_native_pptx_python-pptx.txt
+CM3060 L6,36,pypdf (embedded text layer),,,,,,17159,2640,0.23,pypdf text layer,,,,outputs\extractors_ctx16k\CM3060_L6_draft_deck\20260920_212756_544195_CM3060 L6_pypdf_embedded_text_layer.txt
+CM3060 L6,36,Tesseract OCR,,,,,,23783,3781,16.51,Tesseract OCR engine,,,,outputs\extractors_ctx16k\CM3060_L6_draft_deck\20260920_212813_055812_CM3060 L6_tesseract_ocr.txt
+CM3060 L6,36,Vision model,,,,,,27096,4369,309.66,qwen2.5vl:7b,0,0,0,outputs\extractors_ctx16k\CM3060_L6_draft_deck\20260920_213322_723121_CM3060 L6_vision_model.txt

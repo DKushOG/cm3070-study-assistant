@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds,quiz_structured
+Transcript only,1,5.29,1.47,6.76,llama3.2-ctx16k,0.7,,,5,True,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212629_900064_transcript_only.txt,,,,,,,0,0,0,,False
+Slide text only,1,2.40,3.27,5.67,llama3.2-ctx16k,0.7,,,5,True,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212635_570478_slide_text_only.txt,,,,,,,0,0,0,,False
+Combined transcript and slide text,1,1.65,1.88,3.54,llama3.2-ctx16k,0.7,,,4,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212639_107335_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,False
+"Transcript, slide text and notes",1,2.08,0.78,2.86,llama3.2-ctx16k,0.7,,,1,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212641_970211_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,False
+Transcript only,2,1.93,0.90,2.83,llama3.2-ctx16k,0.7,,,1,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212644_804916_transcript_only.txt,,,,,,,0,0,0,,False
+Slide text only,2,1.67,2.22,3.89,llama3.2-ctx16k,0.7,,,4,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212648_694760_slide_text_only.txt,,,,,,,0,1,0,,False
+Combined transcript and slide text,2,2.11,0.74,2.85,llama3.2-ctx16k,0.7,,,1,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212651_547313_combined_transcript_and_slide_text.txt,,,,,,,0,0,1,,False
+"Transcript, slide text and notes",2,2.24,2.91,5.16,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_legacy_t07_a1\20260919_212656_704531_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,False
+Transcript only,3,1.95,2.08,4.03,llama3.2-ctx16k,0.7,,,5,True,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212700_734570_transcript_only.txt,,,,,,,0,3,0,,False
+Slide text only,3,2.14,3.66,5.80,llama3.2-ctx16k,0.7,,,5,True,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212706_539335_slide_text_only.txt,,,,,,,0,0,0,,False
+Combined transcript and slide text,3,1.70,1.43,3.14,llama3.2-ctx16k,0.7,,,6,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212709_677502_combined_transcript_and_slide_text.txt,,,,,,,0,2,0,,False
+"Transcript, slide text and notes",3,2.27,2.27,4.54,llama3.2-ctx16k,0.7,,,0,False,1,False,outputs/ctx16k_legacy_t07_a1\20260919_212714_222358_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,False

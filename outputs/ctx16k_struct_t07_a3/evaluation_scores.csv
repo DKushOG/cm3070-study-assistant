@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds,quiz_structured
+Transcript only,1,5.54,6.85,12.39,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234417_467072_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,1,3.28,5.42,8.70,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234426_171248_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,1,1.94,3.56,5.50,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234431_677051_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",1,2.25,6.30,8.56,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234440_236055_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,2,1.61,4.72,6.32,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234446_559039_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,2,1.54,4.93,6.47,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234453_032344_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,2,3.05,5.04,8.09,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234501_119461_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",2,2.27,5.03,7.30,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234508_423670_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,3,1.26,5.42,6.68,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234515_112313_transcript_only.txt,,,,,,,0,0,1,,True
+Slide text only,3,2.22,3.81,6.03,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234521_141034_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,3,2.12,3.38,5.50,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234526_650165_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",3,2.07,8.05,10.12,llama3.2-ctx16k,0.7,,,5,True,1,True,outputs/ctx16k_struct_t07_a3\20260919_234536_771053_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True

@@ -1,0 +1,49 @@
+# Derived vision model with the context window pinned.
+#
+# Why this exists
+# ---------------
+# qwen3-vl:4b served through Ollama allocates a 4096 token context window by
+# default, the same allocation already found and corrected for llama3.2. For
+# the text model that meant the front of a long transcript was silently
+# discarded. For the vision model the consequence is different and worse.
+#
+# A rendered slide at 150 DPI costs a fixed 2303 prompt tokens, whatever the
+# page contains. That leaves exactly 1793 tokens to generate in, and the
+# probe confirmed the arithmetic directly: every truncated call reported
+# completion_tokens 1793 and finish_reason "length", and 2303 + 1793 is 4096.
+#
+# qwen3 is a reasoning model. It thinks before it answers, and on a dense
+# slide the reasoning alone ran to seven or eight thousand characters. The
+# whole 1793 token allowance was spent thinking, the answer never started,
+# and the call returned an empty string with no error. Across the C3
+# instrumentation pass that happened on 49 of 111 slides, and in the
+# extractor comparison behind the draft report it happened on 15 of 36.
+#
+# Why the window and not something else
+# -------------------------------------
+# The probe tested four alternatives on the same pages. Raising max_tokens
+# to 2048 did not lift the limit, because the binding constraint is the
+# window rather than a reply cap. Passing num_ctx through the request body
+# was ignored, because Ollama's OpenAI compatible endpoint does not accept
+# an options block. Disabling thinking through chat_template_kwargs and
+# through the /no_think prompt convention were both ignored as well: the
+# reasoning field came back just as long either way.
+#
+# A Modelfile is therefore the only control that actually binds, which is
+# the same conclusion reached for the text model and for the same reason.
+#
+# 16384 is chosen to match the text model rather than for any property of
+# its own. The measured need is roughly 2303 prompt tokens plus at most
+# around 3500 for reasoning and answer together, so this is ample without
+# being arbitrary, and using one figure across both models keeps the
+# reproduction instructions short.
+#
+# Build it, once, from the repository root:
+#     ollama create qwen3-vl-ctx16k -f Modelfile.vision
+#
+# Then set VISION_MODEL=qwen3-vl-ctx16k in .env, and confirm with
+#     python probe_vision.py --deck "<any deck>" --pages 5,13
+# where a fixed run reports finish=stop rather than finish=length.
+
+FROM qwen3-vl:4b
+PARAMETER num_ctx 16384

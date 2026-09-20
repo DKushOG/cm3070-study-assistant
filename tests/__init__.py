@@ -24,6 +24,11 @@ _AMBIENT_SETTINGS = (
     "VISION_MODEL",
     "VISION_DPI",
     "VISION_MAX_PAGES",
+    "VISION_NUM_PREDICT",
+    "VISION_MAX_EMPTY_RETRIES",
+    "SLIDE_ROUTING",
+    "SLIDE_ROUTING_PICTURE_THRESHOLD",
+    "SLIDE_ROUTING_WORDS_THRESHOLD",
     "LLM_TEMPERATURE",
     "LLM_SEED",
     "LLM_TIMEOUT",
@@ -35,3 +40,11 @@ _AMBIENT_SETTINGS = (
 
 for _name in _AMBIENT_SETTINGS:
     os.environ.pop(_name, None)
+
+# Clearing the environment is necessary but not sufficient. config.py calls
+# load_dotenv(), which would read .env and put every one of those variables
+# straight back, so the suite would silently test whatever the author's .env
+# happened to contain. Setting LLM_TEMPERATURE=0 there, which the evaluation
+# campaigns needed, is enough on its own to change what the reproducibility
+# tests exercise. This flag tells config.py to skip the file entirely.
+os.environ["CM3070_DISABLE_DOTENV"] = "1"

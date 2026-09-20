@@ -10,13 +10,21 @@ reproduces the exact behaviour evaluated in the Preliminary Project Report.
 """
 import os
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    # python-dotenv is convenient but not required. Plain environment
-    # variables work the same way.
-    pass
+# The test package sets this before importing anything, because clearing the
+# environment is not enough on its own: load_dotenv() would read .env and put
+# the cleared variables straight back, so a developer whose .env sets
+# LLM_TEMPERATURE would run a different suite from a reviewer whose .env does
+# not. Honoured here rather than in the tests because this is the only place
+# the file is read.
+if os.getenv("CM3070_DISABLE_DOTENV", "").strip().lower() not in (
+        "1", "true", "yes", "on"):
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        # python-dotenv is convenient but not required. Plain environment
+        # variables work the same way.
+        pass
 
 
 def _get_float(name, default=None):
@@ -58,6 +66,33 @@ VISION_MODEL = os.getenv("VISION_MODEL", "qwen3-vl:4b")
 # model call per page. Both are overridable from the environment.
 VISION_DPI = _get_int("VISION_DPI", 150)
 VISION_MAX_PAGES = _get_int("VISION_MAX_PAGES", 20)
+
+# Upper bound on the tokens one slide extraction may generate. A vision model
+# that loses its way on a dense slide can otherwise generate until it exhausts
+# the context window, which was measured at up to 14641 tokens and nearly
+# three minutes for a single page, returning nothing at the end of it. Slides
+# that extract successfully finish well under 1000 tokens, so this is generous
+# while still turning a runaway into a fast, detectable failure rather than a
+# stall. Set to 0 or blank to impose no cap.
+VISION_NUM_PREDICT = _get_int("VISION_NUM_PREDICT", 3000)
+
+# How many times a slide that comes back empty or truncated is retried before
+# it is reported as unreadable. One retry costs little and recovers a page
+# that failed for a transient reason. Set to 0 to disable retrying.
+VISION_MAX_EMPTY_RETRIES = _get_int("VISION_MAX_EMPTY_RETRIES", 1)
+
+# Per-slide extraction routing. Off by default so the whole-deck behaviour
+# stays the reference condition for the before-and-after comparison, exactly
+# as QUIZ_STRUCTURED does for the quiz path. When on, each slide is sent to
+# the vision model only when the routing rule judges it worth the call.
+SLIDE_ROUTING = os.getenv("SLIDE_ROUTING", "").strip().lower() in (
+    "1", "true", "yes", "on")
+
+# The two routing thresholds, exposed so an ablation can vary them without
+# editing code. Their defaults live in modules/slide_routing.py alongside the
+# evidence for them, and are used when these are unset.
+SLIDE_ROUTING_PICTURE_THRESHOLD = _get_float("SLIDE_ROUTING_PICTURE_THRESHOLD")
+SLIDE_ROUTING_WORDS_THRESHOLD = _get_int("SLIDE_ROUTING_WORDS_THRESHOLD")
 
 # Reproducibility controls, both unset by default. When unset they are not
 # sent to the API at all, so generation reproduces the exact sampling

@@ -1,0 +1,4 @@
+Slide set,Pages,Extraction path,Missing text (1 to 5),Incorrect text (1 to 5),Structure kept (1 to 5),Overall (1 to 5),Notes,Character count,Word count,Seconds elapsed,Model used,Unreadable pages,Truncated pages,Retries spent,Output text file
+CM3065 Lesson 10,30,pypdf (embedded text layer),,,,,,6292,1001,0.09,pypdf text layer,,,,outputs\extractors_ctx16k\03_ISP_L10_image_heavy\20260920_214349_987996_CM3065 Lesson 10_pypdf_embedded_text_layer.txt
+CM3065 Lesson 10,30,Tesseract OCR,,,,,,8535,1377,10.51,Tesseract OCR engine,,,,outputs\extractors_ctx16k\03_ISP_L10_image_heavy\20260920_214400_500453_CM3065 Lesson 10_tesseract_ocr.txt
+CM3065 Lesson 10,30,Vision model,,,,,,13783,2179,229.65,qwen2.5vl:7b,0,0,0,outputs\extractors_ctx16k\03_ISP_L10_image_heavy\20260920_214750_148262_CM3065 Lesson 10_vision_model.txt
