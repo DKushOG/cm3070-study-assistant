@@ -57,15 +57,19 @@ OUTPUT_DIR = os.getenv("OUTPUT_DIR", "outputs")
 # Vision-language model for slide-image extraction, the project's third
 # pre-trained model (image data space). Swappable through the .env file like
 # every other model here, so the extractor comparison in the Evaluation
-# chapter is a configuration change rather than a rewrite. Default is a small
-# local Ollama VLM that reads slide text and describes diagrams in one pass.
-VISION_MODEL = os.getenv("VISION_MODEL", "qwen3-vl:4b")
+# chapter is a configuration change rather than a rewrite. The default is the
+# model chosen by the five-model comparison. qwen3-vl:4b, the earlier default,
+# was rejected: it reasons before answering, ignored every switch that should
+# turn that off, and returned nothing for some slides on some runs.
+VISION_MODEL = os.getenv("VISION_MODEL", "qwen2.5vl:7b")
 
 # Slide-rendering controls for the vision path. DPI trades render quality
-# against speed; the page cap stops a long deck from running away with one
-# model call per page. Both are overridable from the environment.
+# against speed, and the page cap is a safety limit on one model call per
+# page. The cap was 20, which silently dropped the end of any longer deck, so
+# it now sits well above the length of a real lecture. Both are overridable
+# from the environment.
 VISION_DPI = _get_int("VISION_DPI", 150)
-VISION_MAX_PAGES = _get_int("VISION_MAX_PAGES", 20)
+VISION_MAX_PAGES = _get_int("VISION_MAX_PAGES", 200)
 
 # Upper bound on the tokens one slide extraction may generate. A vision model
 # that loses its way on a dense slide can otherwise generate until it exhausts
@@ -81,10 +85,11 @@ VISION_NUM_PREDICT = _get_int("VISION_NUM_PREDICT", 3000)
 # that failed for a transient reason. Set to 0 to disable retrying.
 VISION_MAX_EMPTY_RETRIES = _get_int("VISION_MAX_EMPTY_RETRIES", 1)
 
-# Per-slide extraction routing. Off by default so the whole-deck behaviour
-# stays the reference condition for the before-and-after comparison, exactly
-# as QUIZ_STRUCTURED does for the quiz path. When on, each slide is sent to
-# the vision model only when the routing rule judges it worth the call.
+# Per-slide extraction routing. The interface offers routing as its first
+# and default slide extraction method, and the evaluation harnesses call it
+# directly, so this flag does not switch routing on or off anywhere. It is
+# kept so existing .env files that set it still load. The whole-deck vision
+# method remains available beside routing as the comparison condition.
 SLIDE_ROUTING = os.getenv("SLIDE_ROUTING", "").strip().lower() in (
     "1", "true", "yes", "on")
 
@@ -123,6 +128,14 @@ QUIZ_MAX_ATTEMPTS = _get_int("QUIZ_MAX_ATTEMPTS", 1)
 # the quiz call is issued under a JSON schema that makes the four required
 # fields structurally mandatory rather than merely requested.
 QUIZ_STRUCTURED = os.getenv("QUIZ_STRUCTURED", "").strip().lower() in (
+    "1", "true", "yes", "on")
+
+# The interface is the finished system, so it uses structured generation
+# unless QUIZ_STRUCTURED is set to an explicit off value. The batch runner
+# above keeps the legacy path as its default so the reference condition for
+# the before-and-after comparison does not move. The user can still switch
+# the interface back to the legacy path from the sidebar.
+QUIZ_STRUCTURED_IN_APP = os.getenv("QUIZ_STRUCTURED", "1").strip().lower() in (
     "1", "true", "yes", "on")
 
 # Optional per-source word cap for the prompt context. Unset by default,

@@ -23,18 +23,20 @@ from core.llm_client import LLMClient
 from core.orchestrator import run_pipeline, save_result
 from core.provenance import (describe_slide_provenance,
                              describe_transcript_provenance)
-from modules import audio_stt, slide_vision, slides_ocr, slides_pptx
+from modules import (audio_stt, slide_extraction, slide_vision, slides_ocr,
+                     slides_pptx)
 
 st.set_page_config(page_title="AI Study Assistant", layout="wide")
 st.title("Multimodal AI Study Assistant")
 st.caption(
     "Generates structured revision notes and quiz questions from lecture "
-    f"materials. Model: {config.OPENAI_MODEL} via {config.OPENAI_BASE_URL}"
+    f"materials. Text model: {config.OPENAI_MODEL}. Vision model: "
+    f"{config.VISION_MODEL}. Endpoint: {config.OPENAI_BASE_URL}"
 )
 
 for key in ("transcript", "slide_text", "notes", "slide_source",
             "slide_text_at_extraction", "transcript_model",
-            "transcript_at_extraction"):
+            "transcript_at_extraction", "slide_notice"):
     st.session_state.setdefault(key, "")
 
 with st.sidebar:
@@ -53,6 +55,17 @@ with st.sidebar:
         "Whisper model size", whisper_sizes, index=default_index,
         help="Defaults to WHISPER_MODEL from .env. Larger sizes are more "
              "accurate and slower.")
+
+    # The quiz is generated under a JSON schema by default, which enforces
+    # the five-question format and limits each source basis to a source that
+    # was actually supplied. The legacy prompt-only path stays selectable so
+    # the difference can be shown, and the choice is recorded in every run.
+    quiz_structured = st.checkbox(
+        "Structured quiz (format enforced during decoding)",
+        value=config.QUIZ_STRUCTURED_IN_APP,
+        help="On: the quiz must match a schema, so it always has five "
+             "questions and each names a source you supplied. Off: the "
+             "original prompt-only path, checked afterwards.")
 
     st.subheader("Module status")
     st.write(f"Speech-to-text: {'available' if audio_stt.is_available() else 'not installed'}")
@@ -106,42 +119,15 @@ with left:
     if transcript_provenance:
         st.caption(f"Transcript produced by: {transcript_provenance}")
 
-NATIVE_PPTX_PATH = "Native PowerPoint text (python-pptx)"
-CLASSICAL_PATH = "Classical (pypdf / Tesseract OCR)"
-VISION_PATH = f"Vision model ({config.VISION_MODEL})"
-SLIDE_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
-
-
-def slide_paths_for(suffix):
-    """Return the extraction paths that can run for this file type.
-
-    A pptx reaches the pixel-based paths only through a LibreOffice
-    conversion, so those are offered for a deck only when LibreOffice is
-    present. The native text path never needs it.
-    """
-    is_pptx = suffix == slides_pptx.PPTX_SUFFIX
-    is_image = suffix in SLIDE_IMAGE_SUFFIXES
-    pdf_reachable = suffix == ".pdf" or (
-        is_pptx and slides_pptx.libreoffice_available())
-    paths = []
-    if is_pptx and slides_pptx.is_available():
-        paths.append(NATIVE_PPTX_PATH)
-    if ((pdf_reachable and (slides_ocr.pdf_available()
-                            or slides_ocr.ocr_available()))
-            or (is_image and slides_ocr.ocr_available())):
-        paths.append(CLASSICAL_PATH)
-    if (pdf_reachable or is_image) and slide_vision.is_available():
-        paths.append(VISION_PATH)
-    return paths
-
-
 with middle:
     st.subheader("Slides, PowerPoint or PDF")
-    # Each available extraction path is offered as a choice, and which paths
-    # exist depends on the uploaded file type. The native pptx path keeps
-    # slide structure, the classical path reads text only, and the vision path
-    # also describes diagrams. Which one produced the current text is shown
-    # below for the traceability required by the Design chapter.
+    # Each available extraction method is offered as a choice, and which
+    # methods exist depends on the uploaded file type. Per-slide routing is
+    # listed first and selected by default, because it is the configuration
+    # the Evaluation chapter measured. The logic lives in
+    # modules/slide_extraction.py so it is tested without Streamlit. Which
+    # method produced the current text is shown below for the traceability
+    # required by the Design chapter.
     if (slides_ocr.pdf_available() or slides_ocr.ocr_available()
             or slide_vision.is_available() or slides_pptx.is_available()):
         slide_file = st.file_uploader(
@@ -149,17 +135,21 @@ with middle:
         chosen_path = None
         if slide_file is not None:
             upload_suffix = Path(slide_file.name).suffix.lower()
-            available_paths = slide_paths_for(upload_suffix)
+            available_paths = slide_extraction.paths_for(upload_suffix)
             if not available_paths:
                 st.warning(
                     f"No extraction path is available for a '{upload_suffix}' "
                     "file. Paste the slide text instead.")
             elif len(available_paths) > 1:
                 chosen_path = st.radio(
-                    "Slide extraction method", available_paths,
-                    help="Native PowerPoint text keeps slide structure; "
-                         "classical OCR reads text only; the vision model "
-                         "also describes diagrams, figures and charts.")
+                    "Slide extraction method", available_paths, index=0,
+                    help="Per-slide routing reads each slide from its text "
+                         "layer and sends it to the vision model only when "
+                         "pictures cover at least a tenth of it. Native "
+                         "PowerPoint text keeps slide structure. Classical "
+                         "OCR reads text only. The vision model reads every "
+                         "slide and also describes diagrams, figures and "
+                         "charts.")
             else:
                 chosen_path = available_paths[0]
                 st.caption(f"Available path for this file: {chosen_path}")
@@ -178,39 +168,20 @@ with middle:
                     tmp.write(slide_file.getbuffer())
                     tmp_path = tmp.name
                 try:
-                    is_pptx = suffix == slides_pptx.PPTX_SUFFIX
-                    if chosen_path == NATIVE_PPTX_PATH:
-                        # Speaker notes stay off: they are content no other
-                        # path can see, so including them would confound the
-                        # comparison in the Evaluation chapter.
-                        extracted = slides_pptx.extract_pptx_text(
-                            tmp_path, include_notes=False)
-                    elif chosen_path == VISION_PATH:
+                    vision_client = None
+                    if slide_extraction.needs_vision_model(chosen_path):
                         vision_client = LLMClient(model=config.VISION_MODEL)
                         # Pre-flight before rendering pages and calling the
-                        # model once per page, so an unpulled model is
-                        # reported up front rather than mid-extraction.
+                        # model, so an unpulled model is reported up front
+                        # rather than part way through a deck.
                         reachable, message = vision_client.check_model_available()
                         if not reachable:
                             raise RuntimeError(message)
-                        if is_pptx:
-                            images = slides_pptx.render_pptx_to_images(
-                                tmp_path, dpi=config.VISION_DPI,
-                                max_pages=config.VISION_MAX_PAGES)
-                            extracted = slide_vision.extract_from_images(
-                                images, vision_client)
-                        else:
-                            extracted = slide_vision.extract_slides(
-                                tmp_path, vision_client)
-                    elif is_pptx:
-                        # Convert once, then reuse the existing PDF path so
-                        # nothing downstream needs to know about PowerPoint.
-                        with tempfile.TemporaryDirectory() as workspace:
-                            pdf_path = slides_pptx.convert_to_pdf(
-                                tmp_path, workspace)
-                            extracted = slides_ocr.extract_slides(pdf_path)
-                    else:
-                        extracted = slides_ocr.extract_slides(tmp_path)
+                    extracted, notice = slide_extraction.extract(
+                        tmp_path, chosen_path, vision_client=vision_client)
+                    # Kept in session state so the routing summary and any
+                    # unreadable slides stay on screen after the page reruns.
+                    st.session_state["slide_notice"] = notice
                     # Remember the exact text produced, so a later hand edit
                     # can be detected and disclosed rather than silently
                     # credited to the extractor.
@@ -238,6 +209,8 @@ slide_provenance = describe_slide_provenance(
 with middle:
     if slide_provenance:
         st.caption(f"Slide text produced by: {slide_provenance}")
+    if st.session_state["slide_notice"] and st.session_state["slide_text"]:
+        st.info(st.session_state["slide_notice"])
 
 with right:
     st.subheader("Student notes")
@@ -275,7 +248,8 @@ if st.button("Generate revision notes and quiz", type="primary"):
                     notes=notes, max_words=config.MAX_CONTEXT_WORDS,
                     slide_source=slide_provenance,
                     transcript_source=transcript_provenance,
-                    quiz_max_attempts=config.QUIZ_MAX_ATTEMPTS)
+                    quiz_max_attempts=config.QUIZ_MAX_ATTEMPTS,
+                    quiz_structured=quiz_structured)
             path = save_result(result, output_dir=config.OUTPUT_DIR)
             if result.truncation:
                 st.warning(
@@ -298,11 +272,20 @@ if st.button("Generate revision notes and quiz", type="primary"):
                 # failures documented in the report are the ones being
                 # measured, so the user sees when one has occurred.
                 validation = result.quiz_validation
+                quiz_mode = ("structured, format enforced during decoding"
+                             if result.quiz_structured
+                             else "original prompt-only path")
+                st.caption(f"Quiz mode: {quiz_mode}")
                 if validation is not None and not validation.passed:
                     st.warning(
                         f"Quiz format check failed after "
                         f"{result.quiz_attempts} attempt(s): "
                         f"{validation.describe()}")
+                elif validation is not None:
+                    st.success(
+                        f"Quiz format check passed: "
+                        f"{validation.questions_found} questions, each with "
+                        "an answer, a permitted type and a supplied source.")
                 st.markdown(result.quiz)
         except RuntimeError as error:
             st.error(

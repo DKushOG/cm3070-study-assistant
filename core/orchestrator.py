@@ -289,6 +289,7 @@ def save_result(result, output_dir="outputs"):
                         if result.quiz_seeds else "unset") + "\n")
         if result.quiz_retry_note:
             handle.write(f"quiz_retry_note={result.quiz_retry_note}\n")
+        handle.write(f"quiz_structured={bool(result.quiz_structured)}\n")
         if validation is not None:
             handle.write(
                 f"quiz_shape_warnings={validation.shape_warning_count}\n")

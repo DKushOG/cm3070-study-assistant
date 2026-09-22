@@ -112,6 +112,14 @@ class SaveResultHeaderTests(unittest.TestCase):
         self.assertIn("max_context_words=unset", content)
         self.assertIn("truncation: none", content)
 
+    def test_header_records_which_quiz_path_ran(self):
+        """The interface can switch between the two quiz paths, so a saved
+        run has to say which one produced its quiz."""
+        result = run_pipeline(FakeLLMClient(replies=["N", "Q"]), notes="a b c")
+        with tempfile.TemporaryDirectory() as tmp:
+            content = read(save_result(result, output_dir=tmp))
+        self.assertIn("quiz_structured=False", content)
+
 
 GOOD_QUIZ = "\n".join(
     f"Question: Q{n}?\nSuggested answer: A{n}.\n"
