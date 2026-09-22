@@ -66,7 +66,7 @@ from pathlib import Path
 
 import config
 from core.llm_client import LLMClient
-from modules import slide_vision, slides_pptx
+from modules import slide_routing, slide_vision, slides_pptx
 
 DECK_SUFFIXES = (".pptx", ".pdf")
 
@@ -327,7 +327,10 @@ def pptx_page_features(deck_path):
                 tables += 1
             elif shape.shape_type == MSO_SHAPE_TYPE.GROUP:
                 groups += 1
-            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            elif slide_routing.is_picture_shape(shape):
+                # Uses the shipped rule's own test, so a picture held in a
+                # content placeholder is counted here exactly as the router
+                # counts it.
                 pictures += 1
                 try:
                     picture_area += float(shape.width) * float(shape.height)

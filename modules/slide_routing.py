@@ -15,16 +15,22 @@ The rule
 --------
 On PowerPoint input, call the vision model when pictures occupy at least 10
 per cent of the slide. Measured on 81 PowerPoint slides that gives recall
-0.85 and precision 0.85 while removing 43 per cent of the model calls.
+0.87 and precision 0.85 while removing 42 per cent of the model calls.
+
+A picture counts whether it was inserted as a free picture or dropped into a
+content placeholder. PowerPoint stores the second kind as a placeholder shape
+rather than a picture shape, and the first version of this rule missed it.
+One corpus slide was affected, and it held 366 words of diagram content that
+the vision model recovered. See is_picture_shape below.
 
 Picture area is by some distance the best predictor available. Correlated
-against the novel content a vision call actually produced, it scores +0.674,
+against the novel content a vision call actually produced, it scores +0.715,
 where text yield scores -0.485 and everything else tested scores below 0.3.
 
 On PDF input that feature is not recoverable. A deck built on full bleed
 background artwork reports an image area of 1.000 on every page once
 rendered, which is exactly what one corpus deck does, and the PDF-derived
-version of the same idea collapses from +0.674 to +0.233. The fallback is
+version of the same idea collapses from +0.715 to +0.233. The fallback is
 text yield: call the vision model when the text layer returns fewer than 60
 words. That gives recall 0.74 and precision 0.63, saving 39 per cent. It is
 reported as the weaker rule rather than averaged with the stronger one.
@@ -34,8 +40,8 @@ Why the thresholds sit where they do
 Recall is preferred over precision at the margin, because the two errors are
 not symmetric. A slide wrongly skipped loses its diagram description
 permanently and silently. A slide wrongly sent costs about eight seconds.
-Raising the picture-area threshold to 0.20 would save 60 per cent of calls
-instead of 43, but recall falls from 0.85 to 0.61, and losing a quarter of
+Raising the picture-area threshold to 0.20 would save 59 per cent of calls
+instead of 42, but recall falls from 0.87 to 0.63, and losing over a third of
 the diagram content to save half a minute on a deck is a bad trade for a
 revision tool.
 
@@ -62,6 +68,35 @@ ROUTE_TEXT = "text layer"
 ROUTE_MARKER = "[extracted by: {route}]"
 
 
+def is_picture_shape(shape):
+    """True when a PowerPoint shape holds a picture.
+
+    Two cases count. A picture inserted directly is a picture shape. A
+    picture dropped into a content placeholder is stored as a placeholder
+    whose element is still a picture element (p:pic), so its shape type
+    reads as PLACEHOLDER and a check on shape type alone misses it. That gap
+    was found on a real lecture slide, where it hid a picture covering 47 per
+    cent of the slide from the rule.
+
+    A placeholder that holds text, a chart or a table is not a picture.
+    """
+    try:
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+    except ImportError:
+        return False
+    try:
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            return True
+    except NotImplementedError:
+        # python-pptx raises this for some unrecognised shape kinds.
+        pass
+    if not getattr(shape, "is_placeholder", False):
+        return False
+    element = getattr(shape, "_element", None)
+    tag = getattr(element, "tag", "")
+    return isinstance(tag, str) and tag.endswith("}pic")
+
+
 def pptx_picture_area_ratios(path):
     """Return {slide_number: fraction of the slide occupied by pictures}.
 
@@ -69,15 +104,15 @@ def pptx_picture_area_ratios(path):
     model call. Returns an empty mapping for any input that is not a readable
     pptx, which is what makes the caller fall back to text yield.
 
-    Overlapping pictures are summed and the total is capped at 1.0, so the
-    value means "how much of this slide is given over to imagery" rather than
-    an exact non-overlapping area.
+    Pictures held in content placeholders count as well as free pictures,
+    through is_picture_shape. Overlapping pictures are summed and the total
+    is capped at 1.0, so the value means "how much of this slide is given
+    over to imagery" rather than an exact non-overlapping area.
     """
     if Path(str(path)).suffix.lower() != ".pptx":
         return {}
     try:
         from pptx import Presentation
-        from pptx.enum.shapes import MSO_SHAPE_TYPE
     except ImportError:
         return {}
     try:
@@ -92,7 +127,7 @@ def pptx_picture_area_ratios(path):
     for number, slide in enumerate(presentation.slides, start=1):
         covered = 0.0
         for shape in slide.shapes:
-            if shape.shape_type != MSO_SHAPE_TYPE.PICTURE:
+            if not is_picture_shape(shape):
                 continue
             try:
                 covered += float(shape.width) * float(shape.height)
