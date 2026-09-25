@@ -1,20 +1,19 @@
 """Choose and run a slide extraction method for an uploaded file.
 
-The interface offers every extraction method that can run for the file the
-student uploads. This module holds that logic so it can be tested without
-Streamlit, and so the interface runs the same code paths as the evaluation
-harness.
+The interface offers every method that can run for the file the student
+uploads. That choice is kept here so it can be tested without Streamlit and so
+the interface runs the same code as the evaluation harness.
 
-Four methods exist. Native PowerPoint text keeps slide structure and needs
-nothing beyond python-pptx. The classical path reads a PDF text layer or runs
-Tesseract. The vision model reads every page. Per-slide routing, from
+There are four methods. Native PowerPoint text keeps the slide structure and
+needs only python-pptx. The classical path reads a PDF text layer or runs
+Tesseract. The vision model reads every page. Per-slide routing, in
 modules/slide_routing.py, reads each slide from its text layer unless the
-routing rule says the vision model will add something, which is the
-configuration the Evaluation chapter measured and the one offered first.
+routing rule says the vision model is likely to add something. Routing is the
+method offered first.
 
-Both paths that call the vision model use the reply detection in
-modules/slide_vision.py, so a slide the model could not read is marked in
-the text and reported to the caller, never passed through as an empty page.
+Both methods that call the vision model use the reply checks in
+modules/slide_vision.py, so a slide the model could not read is marked in the
+text and reported to the caller rather than passed on as an empty page.
 """
 from pathlib import Path
 
@@ -39,13 +38,13 @@ def routed_path_label():
 def paths_for(suffix):
     """Return the extraction methods that can run for this file type.
 
-    A pptx reaches the pixel-based methods only through a LibreOffice
-    conversion, so those are offered for a deck only when LibreOffice is
-    present. The native text method never needs it. Routing needs a whole
-    document to route across, so it is not offered for a single image.
+    A pptx reaches the image-based methods through a LibreOffice conversion, so
+    those are offered for a deck only when LibreOffice is installed. The native
+    text method does not need it. Routing needs a whole document to route
+    across, so it is not offered for a single image.
 
-    Per-slide routing, when available, is listed first because it is the
-    default the system is designed around.
+    Per-slide routing is listed first when it is available, since it is the
+    default the system is built around.
     """
     suffix = (suffix or "").lower()
     is_pptx = suffix == slides_pptx.PPTX_SUFFIX
@@ -74,13 +73,12 @@ def needs_vision_model(method):
 def extract(path, method, vision_client=None, max_pages=None):
     """Extract slide text from the file at path using the chosen method.
 
-    Returns (text, notice). notice is a plain sentence for the interface
-    describing what routing did or which slides could not be read, and is
-    empty when there is nothing to report.
+    Returns (text, notice). notice is a plain sentence for the interface saying
+    what routing did or which slides could not be read, and is empty when there
+    is nothing to report.
 
-    max_pages defaults to config.VISION_MAX_PAGES and is applied to every
-    method that renders pages, so the whole deck is read unless the cap is
-    deliberately lowered.
+    max_pages defaults to config.VISION_MAX_PAGES and applies to every method
+    that renders pages, so the whole deck is read unless the cap is lowered.
     """
     if max_pages is None:
         max_pages = config.VISION_MAX_PAGES
@@ -88,8 +86,8 @@ def extract(path, method, vision_client=None, max_pages=None):
     is_pptx = suffix == slides_pptx.PPTX_SUFFIX
 
     if method == NATIVE_PPTX_PATH:
-        # Speaker notes stay off: they are content no other method can see,
-        # so including them would confound the extraction comparison.
+        # Speaker notes stay off. No other method can see them, so including
+        # them would make the extraction comparison unfair.
         return slides_pptx.extract_pptx_text(path, include_notes=False), ""
 
     if method == routed_path_label():
@@ -121,8 +119,8 @@ def extract(path, method, vision_client=None, max_pages=None):
 
     if method == CLASSICAL_PATH:
         if is_pptx:
-            # Convert once, then reuse the existing PDF path so nothing
-            # downstream needs to know about PowerPoint.
+            # Convert once and reuse the PDF path, so nothing after this
+            # needs to know the file started as PowerPoint.
             import tempfile
             with tempfile.TemporaryDirectory() as workspace:
                 pdf_path = slides_pptx.convert_to_pdf(str(path), workspace)

@@ -1,10 +1,6 @@
 """Tests for the extractor comparison harness.
 
-Cover the two things the report relies on: that unavailable paths are skipped
-rather than crashing, and that the CSV columns match the OCR 5.2 sheet in the
-exact order and spelling. Path availability is patched so the tests are
-deterministic no matter what is installed on the machine, and no test makes a
-real model call.
+Part of the input modules and extractor comparison group.
 """
 import io
 import os
@@ -18,6 +14,8 @@ from tests.fakes import FakeLLMClient
 
 
 class CsvColumnTests(unittest.TestCase):
+    """The manual scoring columns come first, in a fixed order and spelling."""
+
     def test_manual_columns_exact_order_and_spelling(self):
         self.assertEqual(ce.MANUAL_COLUMNS, [
             "Slide set",
@@ -37,6 +35,8 @@ class CsvColumnTests(unittest.TestCase):
 
 
 class BuildPathsTests(unittest.TestCase):
+    """Only the paths that can run for this file type are offered."""
+
     def test_pdf_all_available_runs_three_paths_in_order(self):
         runnable, skipped = ce.build_paths(".pdf", True, True, True)
         self.assertEqual(runnable,
@@ -69,8 +69,11 @@ class BuildPathsTests(unittest.TestCase):
 
 
 class PptxPathTests(unittest.TestCase):
-    """A pptx yields four comparable techniques, but only once LibreOffice can
-    turn it into pixels; without it the native text path must still run."""
+    """A deck gives four comparable results once it can be rendered.
+
+        Without LibreOffice the native path runs and the others are skipped.
+
+    """
 
     def test_pptx_with_everything_available_runs_all_four_paths(self):
         runnable, skipped = ce.build_paths(
@@ -117,6 +120,8 @@ class PptxPathTests(unittest.TestCase):
 
 
 class MainSkipTests(unittest.TestCase):
+    """With nothing available the run reports and writes no CSV."""
+
     def test_main_returns_1_and_writes_no_csv_when_nothing_available(self):
         with mock.patch.object(ce.slides_ocr, "pdf_available",
                                return_value=False), \
@@ -136,6 +141,8 @@ class MainSkipTests(unittest.TestCase):
 
 
 class VisionPreflightTests(unittest.TestCase):
+    """An unreachable vision model is skipped before any page is rendered."""
+
     def test_unreachable_vision_model_is_skipped_before_rendering(self):
         """An unpulled model must be reported up front and must not trigger
         page rendering, which is the slow work the pre-flight exists to

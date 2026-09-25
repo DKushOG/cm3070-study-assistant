@@ -1,9 +1,8 @@
-"""Text cleaning utilities.
+"""Text cleaning helpers.
 
-Pure functions with no external dependencies so they can be unit tested
-without any model or network access. clean_text preserves the behaviour of
-the evaluated Preliminary Project Report prototype so results remain
-comparable across project stages.
+Pure functions with no dependencies, so they can be tested without a model or a
+network. clean_text keeps the behaviour of the prototype, so results stay
+comparable between project stages.
 """
 
 

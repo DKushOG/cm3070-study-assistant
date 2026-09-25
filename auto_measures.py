@@ -4,8 +4,8 @@ Run from the project folder with the virtual environment active:
 
     python auto_measures.py
 
-Reports, for each of the four input modes, the three measures described in Section 5.3:
-key-term coverage, a faithfulness proxy and a novel n-gram rate. Everything is computed
+Reports, for each of the four input modes, three measures: key-term coverage, a
+faithfulness proxy and a novel n-gram rate. Everything is computed
 from files already on disk, so no model is called and nothing is regenerated.
 """
 import csv

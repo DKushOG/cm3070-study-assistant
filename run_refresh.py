@@ -7,8 +7,8 @@ context window. A rendered slide costs a fixed 2303 tokens of it, leaving
 1793 to generate in, and qwen3 reasons before it answers. On a dense slide
 the reasoning consumed the whole allowance and the answer never started, so
 the call returned an empty string with no error. That happened on 49 of 111
-slides in the C3 instrumentation pass and on 15 of 36 pages in the extractor
-comparison behind the draft report. Both results have to be produced again.
+slides in the slide instrumentation pass and on 15 of 36 pages in the earlier
+extractor comparison. Both results have to be produced again.
 
 What this script does, in order:
 
@@ -24,10 +24,11 @@ What this script does, in order:
      generation, which is exactly what happened on the first attempt.
 
   3. Moves the existing `outputs/c3_routing` aside under a dated name rather
-     than deleting it. The faulty run is evidence for the finding and the
-     report cites its numbers.
+     than deleting it. The faulty run is the evidence behind the finding and
+     its numbers were already reported.
 
-  4. Re-runs the C3 instrumentation pass over the four corpus decks.
+  4. Re-runs the slide instrumentation pass over the four corpus decks, which
+     can also be run on its own with --c3.
 
   5. Checks the new sheet and reports the empty-reply rate. Anything above a
      few per cent is flagged loudly in the log.
@@ -73,9 +74,9 @@ MODELFILE = "Modelfile.vision"
 
 CORPUS = Path("..") / "Evaluation corpus"
 
-# The deck behind the extractor comparison in the draft report. Re-running it
-# is the higher priority of the two, because it is evidence for a claim that
-# has already been submitted.
+# The deck behind the earlier extractor comparison. Re-running it is the
+# higher priority of the two, because it is evidence for a claim that has
+# already been submitted.
 DRAFT_DECK = (Path("..") / "Testing data" / "Naive Bayes test data used"
               / "CM3060 L6.pptx")
 
@@ -236,8 +237,8 @@ def gate(log, config, dpi):
 def archive(log, path):
     """Move a directory aside under a dated name instead of deleting it.
 
-    The faulty run is the evidence behind the finding and its numbers are
-    quoted in the report, so it is kept.
+    The faulty run is the evidence behind the finding and its numbers were
+    already reported, so it is kept.
     """
     target = Path(path)
     if not target.exists():

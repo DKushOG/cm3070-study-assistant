@@ -4,8 +4,8 @@
 # mp4 support, the cap is raised here rather than asking the student to
 # extract the audio first.
 #
-# Trade-off, recorded for the report: Streamlit buffers an upload in the
-# server process, so a file near this cap causes a transient memory spike of
-# roughly the file size. The value is a deliberate ceiling, not "unlimited".
+# Trade-off: Streamlit buffers an upload in the server process, so a file near
+# this cap causes a short memory spike of roughly the file size. The value is a
+# deliberate ceiling, not "unlimited".
 [server]
 maxUploadSize = 2000

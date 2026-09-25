@@ -1,0 +1,6 @@
+Deck,Content kept by eye (1 to 5),Notes,pages,vision_pages,text_pages,calls_avoided_pct,routed_words,all_vision_words,content_retained_pct,routed_seconds,all_vision_seconds,time_saved_pct,unreadable_pages,output_file
+CM3060_L6_draft_deck,,,36,15,21,58,4254,4369,97,249.4,309.7,19,0,outputs\ablation_routing_v2\routed\CM3060_L6_draft_deck_routed.txt
+01_AI_L8_control,,,32,15,17,53,3560,3671,97,215.3,275.2,22,0,outputs\ablation_routing_v2\routed\01_AI_L8_control_routed.txt
+02_AI_L6_mixed,,,34,19,15,44,3999,4219,95,224.9,304.5,26,0,outputs\ablation_routing_v2\routed\02_AI_L6_mixed_routed.txt
+03_ISP_L10_image_heavy,,,30,26,4,13,2264,2179,104,270.9,229.7,-18,0,outputs\ablation_routing_v2\routed\03_ISP_L10_image_heavy_routed.txt
+04_GP_T7_extreme,,,15,13,2,13,1831,1789,102,126.8,97.5,-30,0,outputs\ablation_routing_v2\routed\04_GP_T7_extreme_routed.txt

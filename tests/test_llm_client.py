@@ -1,10 +1,6 @@
-"""Reproducibility-control tests for LLMClient.
+"""Tests for the model client and its sampling settings.
 
-These verify that temperature and seed are sent to the API only when set,
-and omitted entirely when unset, so the default configuration reproduces the
-exact behaviour of the evaluated prototype. They exercise the _request_kwargs
-seam directly, so they need no real model, network access or the openai
-package.
+Part of the model client group. No test here makes a network call.
 """
 import unittest
 
@@ -13,6 +9,12 @@ from core.llm_client import LLMClient
 
 
 class RequestKwargsTests(unittest.TestCase):
+    """Temperature and seed are sent only when they are set.
+
+        Zero is a real temperature and is sent, while None is left out.
+
+    """
+
     def test_temperature_and_seed_omitted_when_unset(self):
         client = LLMClient(model="m")
         # Force the unset state regardless of any .env on the dev machine.
@@ -43,6 +45,8 @@ class RequestKwargsTests(unittest.TestCase):
 
 
 class ChatRequestIdentityTests(unittest.TestCase):
+    """A default request matches the one the earlier prototype sent."""
+
     def test_chat_request_is_byte_identical_to_baseline(self):
         """Guards the constraint that adding the vision path must not change
         the request chat() sends. With no settings, the request is exactly
@@ -57,6 +61,8 @@ class ChatRequestIdentityTests(unittest.TestCase):
 
 
 class ImageRequestKwargsTests(unittest.TestCase):
+    """A multimodal request has the right shape and the same settings rule."""
+
     def test_multimodal_content_structure(self):
         client = LLMClient(model="qwen3-vl:4b")
         client.temperature = None
@@ -92,8 +98,12 @@ class ImageRequestKwargsTests(unittest.TestCase):
 
 
 class PreflightTests(unittest.TestCase):
-    """The probe must never raise: offline or missing-package cases have to
-    degrade to a clear message, not an exception."""
+    """The availability check returns a message rather than raising.
+
+        An offline machine or a missing package has to give a clear message,
+        not an error part way through a long extraction.
+
+    """
 
     class _FakeModels:
         def __init__(self, ids):
@@ -148,6 +158,8 @@ class PreflightTests(unittest.TestCase):
 
 
 class ClientLifecycleTests(unittest.TestCase):
+    """The OpenAI client is built once per instance and honours the timeout."""
+
     def test_openai_client_is_built_once_per_instance(self):
         """A cached client is reused rather than rebuilt per call. Setting the
         cache to a sentinel proves _get_client returns it without reimporting

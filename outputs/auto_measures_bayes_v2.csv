@@ -1,0 +1,13 @@
+mode,file,key_term_coverage,faithfulness,novel_trigrams
+Transcript only,20260922_193745_739244_transcript_only.txt,9.0,71.4,93.8
+Slide text only,20260922_193753_244904_slide_text_only.txt,23.3,83.6,69.1
+Combined transcript and slide text,20260922_193801_853550_combined_transcript_and_slide_text.txt,28.0,87.2,54.0
+"Transcript, slide text and notes",20260922_193809_561751_transcript_slide_text_and_notes.txt,15.9,85.5,64.4
+Transcript only,20260922_193816_807493_transcript_only.txt,9.5,73.8,94.6
+Slide text only,20260922_193823_862415_slide_text_only.txt,23.3,83.6,69.1
+Combined transcript and slide text,20260922_193832_058325_combined_transcript_and_slide_text.txt,28.0,87.2,54.0
+"Transcript, slide text and notes",20260922_193838_999338_transcript_slide_text_and_notes.txt,15.9,85.5,64.4
+Transcript only,20260922_193844_809314_transcript_only.txt,9.5,73.8,94.6
+Slide text only,20260922_193851_844505_slide_text_only.txt,23.3,83.6,69.1
+Combined transcript and slide text,20260922_193900_036411_combined_transcript_and_slide_text.txt,28.0,87.2,54.0
+"Transcript, slide text and notes",20260922_193906_928547_transcript_slide_text_and_notes.txt,15.9,85.5,64.4

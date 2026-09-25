@@ -1,24 +1,21 @@
-"""Revalidate quiz output from runs that were already saved.
+"""Check saved runs again with the current quiz validator.
 
-The quiz format validator was corrected after the first real runs had been
-generated, so the verdicts recorded in those files were produced by the old
-parser and understate what actually happened. Regenerating the runs would cost
-model time and would not reproduce the same output anyway, and the saved files
-are evidence in their own right. This tool re-reads them and applies the
-current validator, so a measurement collected before the fix can be restated
-without discarding it.
+The validator was corrected after the first real runs had been saved, so the
+verdicts written into those files came from the older parser and report fewer
+faults than the runs actually had. Regenerating the runs would cost model time
+and would not produce the same output anyway, and the saved files are evidence
+in their own right. This tool re-reads them and applies the current validator,
+so a measurement taken before the fix can be restated instead of thrown away.
 
-It reads the quiz section only: everything between the "=== QUIZ QUESTIONS ==="
-marker and the timing lines that close the file. Parsing is defensive because
-the saved files carry a metadata header, are written on Windows with CRLF line
-endings, and may be truncated or missing the marker entirely if a run was
-interrupted; a file that cannot be read is reported and skipped rather than
-stopping the batch, matching how evaluation/run_eval.py handles missing
-sources.
+It reads the quiz section only, which is everything between the
+"=== QUIZ QUESTIONS ===" marker and the timing lines that close the file.
+Parsing allows for the metadata header, for CRLF line endings written on
+Windows, and for a file that was cut short or has no marker at all because a
+run was interrupted. A file that cannot be read is reported and skipped rather
+than stopping the batch, as evaluation/run_eval.py does for missing sources.
 
-The CSV is written for direct use in the evaluation workbook, and the summary
-line gives the proportion of runs whose quiz passed validation, which is the
-headline number the Evaluation chapter needs.
+The CSV is written for use in the evaluation workbook, and the summary line
+gives the share of runs whose quiz passed validation.
 
 Usage:
     python -m evaluation.revalidate_outputs --outputs outputs

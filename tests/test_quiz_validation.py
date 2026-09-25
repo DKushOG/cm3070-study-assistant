@@ -1,9 +1,8 @@
 """Tests for quiz format validation.
 
-Covers the two failure modes documented in the Preliminary Project Report
-(fewer than five questions, and question types outside the four intended
-categories) plus missing labelled lines and empty output. The functions are
-pure, so every case is exercised without a model.
+Part of the quiz validation and revalidation group. Two classes near the end
+replay real saved runs, so a future change to the parser cannot quietly
+reintroduce a fault those runs exposed.
 """
 import unittest
 
@@ -52,10 +51,10 @@ Suggested answer: The likelihood of evidence given a hypothesis is a key compone
 Question type: Application
 Source basis: Lecture transcript"""
 
-# The exact output of two real runs, kept verbatim so a future change cannot
-# silently reintroduce either failure. Run 210754 was reported as zero
-# questions by the original parser despite containing five; run 211217 echoed
-# the prompt's own placeholder wording back as content.
+# The output of two real runs, kept word for word so a later change cannot
+# quietly bring either failure back. Run 210754 was reported as zero questions
+# by the original parser although it held five. Run 211217 echoed the prompt's
+# own placeholder wording back as content.
 EVIDENCE_UNDER_REPORTED = """Here are five open short-answer questions based on the provided source material:
 
 **Question 1: Definition**
@@ -115,6 +114,8 @@ def make_quiz(count, question_type="definition"):
 
 
 class WellFormedQuizTests(unittest.TestCase):
+    """A correctly formatted quiz passes and all four types are accepted."""
+
     def test_five_valid_questions_pass(self):
         result = validate_quiz(make_quiz(5))
         self.assertTrue(result.passed)
@@ -133,6 +134,8 @@ class WellFormedQuizTests(unittest.TestCase):
 
 
 class QuestionCountTests(unittest.TestCase):
+    """A quiz with the wrong number of questions fails and is counted."""
+
     def test_four_questions_fail_and_are_counted(self):
         result = validate_quiz(make_quiz(4))
         self.assertFalse(result.passed)
@@ -157,6 +160,8 @@ class QuestionCountTests(unittest.TestCase):
 
 
 class MissingLabelTests(unittest.TestCase):
+    """A missing label is reported with the question number it belongs to."""
+
     def test_missing_source_basis_is_reported_with_its_question_number(self):
         quiz = make_quiz(4) + (
             "Question: Question number 5?\n"
@@ -176,10 +181,15 @@ class MissingLabelTests(unittest.TestCase):
 
 
 class QuestionTypeTests(unittest.TestCase):
+    """A type outside the four categories fails.
+
+    A missing type is reported once, as missing, rather than twice.
+    """
+
     def test_invalid_type_is_reported(self):
         result = validate_quiz(make_quiz(5, "multiple choice"))
         self.assertFalse(result.passed)
-        # Count is fine; only the type is wrong.
+        # The count is fine and only the type is wrong.
         self.assertTrue(result.returned_five)
         self.assertIn("invalid type", result.describe())
 
@@ -198,6 +208,8 @@ class QuestionTypeTests(unittest.TestCase):
 
 
 class ParsingToleranceTests(unittest.TestCase):
+    """List numbering, bold markers and a preamble do not stop the parse."""
+
     def test_list_numbering_and_bold_markers_are_tolerated(self):
         quiz = ("1. **Question:** What is Bayes theorem?\n"
                 "   **Suggested answer:** A rule for updating belief.\n"
@@ -214,8 +226,11 @@ class ParsingToleranceTests(unittest.TestCase):
 
 
 class NumberedLabelTests(unittest.TestCase):
-    """The parser must recognise a label whose number sits inside it, which is
-    the defect that made a five-question run report zero."""
+    """A label with its number inside it still starts a block.
+
+        This is the fault that made a quiz of five questions report zero.
+
+    """
 
     def test_numbered_and_decorated_labels_start_a_block(self):
         for line in ("**Question 1: Definition**", "Question 2:",
@@ -252,6 +267,8 @@ class NumberedLabelTests(unittest.TestCase):
 
 
 class MidLineLabelTests(unittest.TestCase):
+    """An attribute label is read mid-line, but a question label is not."""
+
     def test_answer_label_is_recognised_mid_line(self):
         """Real output ran the answer label on after the question text."""
         quiz = ("Question: What is TF-IDF? Suggested answer: A weighting "
@@ -279,8 +296,12 @@ class MidLineLabelTests(unittest.TestCase):
 
 
 class EmptyValueTests(unittest.TestCase):
-    """A line that is present but says nothing is a distinct failure from a
-    line that is absent, and they are counted separately."""
+    """A line that is present but says nothing is its own kind of failure.
+
+        Absent, blank and echoed are counted separately, because the evaluation
+        reports them separately.
+
+    """
 
     def test_underscore_answer_is_empty_not_missing(self):
         quiz = ("Question: What is TF-IDF?\n"
@@ -320,6 +341,8 @@ class EmptyValueTests(unittest.TestCase):
 
 
 class PlaceholderEchoTests(unittest.TestCase):
+    """Wording copied from the prompt is a fault, not an answer."""
+
     def test_placeholders_are_derived_from_the_prompt(self):
         """Derived, not copied, so a prompt reword cannot leave this pointing
         at wording that no longer exists."""
@@ -348,8 +371,12 @@ class PlaceholderEchoTests(unittest.TestCase):
 
 
 class EvidenceOneTests(unittest.TestCase):
-    """Run 210754: five recognisable questions the old parser reported as
-    zero, hiding the run's real faults behind a parsing failure."""
+    """Run 210754, replayed.
+
+        Five readable questions that the older parser reported as zero, which
+        hid the faults the run really had.
+
+    """
 
     def setUp(self):
         self.result = validate_quiz(EVIDENCE_UNDER_REPORTED)
@@ -381,8 +408,12 @@ class EvidenceOneTests(unittest.TestCase):
 
 
 class EvidenceTwoTests(unittest.TestCase):
-    """Run 211217: the model echoed the prompt's placeholder wording, which
-    the old validator counted as real questions."""
+    """Run 211217, replayed.
+
+        The model echoed the prompt's placeholder wording, which the older
+        validator counted as real content.
+
+    """
 
     def setUp(self):
         self.result = validate_quiz(EVIDENCE_PLACEHOLDER_ECHO)
@@ -406,9 +437,12 @@ class EvidenceTwoTests(unittest.TestCase):
 
 
 class SourceBasisTests(unittest.TestCase):
-    """The provenance field is the claim the project rests on, so a value
-    naming something that was never an input is a fault, not a formatting
-    slip. Every accepted phrasing here was taken from a real saved run."""
+    """The source basis must name an input the student supplied.
+
+        Naming the system's own revision notes is its own fault, since that is
+        a different failure from naming nothing.
+
+    """
 
     def test_real_wordings_resolve_to_their_input_source(self):
         cases = {
@@ -467,8 +501,8 @@ class SourceBasisTests(unittest.TestCase):
         self.assertEqual(result.count_faults(INVALID_BASIS_FAULT), 1)
 
     def test_absent_basis_is_not_double_reported(self):
-        """A missing label is already a fault; it must not also count as an
-        invalid basis, or the statistics would be inflated."""
+        """A missing label is already a fault, so it must not also count as
+        an invalid basis, or the figures would be inflated."""
         quiz = ("Question: What is TF-IDF?\nSuggested answer: A weighting.\n"
                 "Question type: definition")
         result = validate_quiz(quiz)
@@ -484,9 +518,12 @@ class SourceBasisTests(unittest.TestCase):
 
 
 class QuestionShapeTests(unittest.TestCase):
-    """A soft signal: it is counted and reported, but never decides the
-    verdict, so the pass rate earlier results were collected under is
-    unaffected."""
+    """The question-shape check is a warning, not a fault.
+
+        It is counted and reported but left out of the verdict, so the pass
+        rate earlier results were collected under does not move.
+
+    """
 
     def test_question_mark_passes(self):
         self.assertTrue(looks_like_a_question("What is Bayes theorem?"))
@@ -535,8 +572,12 @@ class QuestionShapeTests(unittest.TestCase):
 
 
 class RealRunTests(unittest.TestCase):
-    """The run that motivated this prompt, kept verbatim so a future change
-    cannot silently reintroduce any of its three defects."""
+    """A real run kept word for word.
+
+        Replayed so a later change to the parser cannot quietly undo any of the
+        fixes above.
+
+    """
 
     def setUp(self):
         self.result = validate_quiz(EVIDENCE_REAL_RUN)

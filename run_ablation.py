@@ -1,31 +1,31 @@
-"""Ablation: what does per-slide routing cost, and what does it save?
+"""Measure what per-slide routing costs and what it saves.
 
-The routing rule was derived from 111 instrumented slides and says: send a
-slide to the vision model when pictures occupy at least 10 per cent of it,
-falling back to text yield under 60 words when picture area cannot be read.
-Deriving a threshold is not the same as showing it works, and a threshold
-evaluated on the run that produced it proves nothing.
+The routing rule was derived from 111 instrumented slides. It sends a slide to
+the vision model when pictures cover at least 10 per cent of it, and falls back
+to text yield under 60 words when picture area cannot be read. Deriving a
+threshold is not the same as showing that it works, and a threshold checked on
+the run that produced it shows nothing.
 
-This script runs the rule end to end on all five decks and compares what came
-out against the all-vision extraction already measured in
-outputs/extractors_ctx16k, which is the condition the rule is meant to
-improve on.
+This script runs the rule end to end on all five decks and compares the result
+against the all-vision extraction already measured in
+outputs/extractors_ctx16k, which is the condition routing is meant to improve
+on.
 
-Three numbers decide whether the rule is worth shipping:
+Three numbers decide whether the rule is worth keeping:
 
-  * **Content retained.** Words extracted under routing, as a proportion of
-    words extracted when every slide went to the model. Routing is only
-    defensible if it keeps nearly all the content.
-  * **Model calls avoided.** The saving, and the reason for doing this.
-  * **Time saved.** What the saving is worth in seconds a student waits.
+  * Content retained. Words extracted under routing as a share of the words
+    extracted when every slide went to the model. Routing is worth having only
+    if it keeps nearly all of the content.
+  * Model calls avoided. The saving, which is the reason for doing this.
+  * Time saved. What that saving is worth in seconds the student waits.
 
-Content retained is the honest headline, and it is reported first, because a
-rule that halves the runtime by discarding a fifth of the material is not an
-improvement. Note also what word count cannot see: routing a slide to the
-text layer loses its diagram description specifically, and a diagram
-description is short. A rule could retain 97 per cent of the words while
-losing the exact content the vision model exists to produce. The per-deck
-routed output is saved so that can be checked by reading rather than assumed.
+Content retained is reported first, because a rule that halves the runtime by
+dropping a fifth of the material is not an improvement. Word count also has a
+blind spot. Routing a slide to the text layer loses its diagram description in
+particular, and a diagram description is short, so a rule could keep 97 per
+cent of the words and still lose the content the vision model is there to
+produce. The routed output for each deck is saved so that can be checked by
+reading it rather than assumed.
 
 Usage, from the repository root:
 

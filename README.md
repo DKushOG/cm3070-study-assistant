@@ -1,302 +1,203 @@
-# Multimodal AI Study Assistant (CM3070 Final Project)
+# Multimodal AI Study Assistant
 
-Generates structured revision notes and quiz questions from lecture
-materials by orchestrating several AI components: speech-to-text for
-lecture audio, text extraction for slides, and a language model for
-generation. Built for the University of London CM3070 Final Year Project,
-template CM3020 Artificial Intelligence, Project Idea 1, Orchestrating AI
-models to achieve a goal.
+Turns lecture material into revision notes and quiz questions. Give it a
+lecture recording, a slide deck and your own typed notes. It transcribes the
+recording, extracts the slide content, combines whatever you supplied into one
+labelled context, then generates structured revision notes followed by five
+short-answer questions with suggested answers.
 
-The generation pipeline preserves the exact prompts and behaviour of the
-prototype evaluated in the Preliminary Project Report, so results remain
-comparable across project stages. The speech-to-text and slide extraction
-modules are the planned Phase A and Phase B extensions and degrade
-gracefully when their dependencies are not installed, which keeps the app
-runnable and demonstrable at every stage of development.
+Everything runs locally through Ollama. No paid API is required.
 
-## Project structure
+Built for CM3070 Final Year Project, University of London, template CM3020
+Artificial Intelligence, Project Idea 1.
 
-    app.py                     Streamlit interface
-    config.py                  Environment-driven settings (.env supported)
-    core/
-      cleaning.py              Text cleaning (pure functions)
-      context_builder.py       Labelled context assembly and mode naming
-      generation.py            Prompts and the two sequential model calls
-      llm_client.py            OpenAI compatible endpoint client (text+vision)
-      orchestrator.py          Pipeline controller, timing, output saving
-      provenance.py            Which extractor produced the slide text
-      quiz_validation.py       Quiz format checking (pure functions)
-    modules/
-      audio_stt.py             Whisper transcription (Phase A)
-      slides_ocr.py            PDF text extraction and image OCR (Phase B)
-      slide_vision.py          Vision-language slide extraction (third model)
-      slides_pptx.py           Native PowerPoint text, optional rendering
-    docs/
-      requirements_traceability.md  Requirement to evidence mapping
-    evaluation/
-      rubric.py                The six scoring criteria
-      run_eval.py              Batch runner for the four-mode comparison
-      compare_extractors.py    Slide extractor comparison harness (5.2)
-      revalidate_outputs.py    Re-check saved runs against the validator
-    tests/                     Unit and integration tests (no model needed)
-    samples/                   Bayes theorem sample materials from the PPR
-    outputs/                   Generated outputs and scoring sheets
+## What you need
 
-## Quick start
+| Software | Required for | Install |
+|---|---|---|
+| Python 3.10 or newer | Everything | python.org |
+| Ollama | The text and vision models | https://ollama.com |
+| ffmpeg | Transcribing recordings | Windows: `winget install --id=Gyan.FFmpeg -e` |
+| Tesseract | The OCR extraction method only | https://github.com/UB-Mannheim/tesseract/wiki |
+| LibreOffice | Reading PowerPoint with the image-based methods | https://www.libreoffice.org |
 
-1. Create and activate a virtual environment.
+Only Python and Ollama are needed to start. Every source can be pasted in by
+hand, and any module whose dependencies are missing is hidden in the sidebar
+rather than breaking the app.
 
-   Windows PowerShell:
+## Setup
 
-       py -m venv .venv
-       .venv\Scripts\Activate.ps1
+**1. Create a virtual environment and install the dependencies.**
 
-   macOS or Linux:
+Windows:
 
-       python3 -m venv .venv
-       source .venv/bin/activate
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-2. Install the core dependencies:
+macOS or Linux:
 
-       pip install -r requirements.txt
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-3. Start a free local model with Ollama:
+**2. Install the optional input modules you want.**
 
-       ollama pull llama3.2
-       ollama serve
+```
+pip install openai-whisper    # transcribe recordings
+pip install pymupdf           # render slide pages for the vision model
+pip install python-pptx       # read PowerPoint text directly
+pip install pypdf             # read a PDF text layer
+pip install pytesseract Pillow  # OCR
+```
 
-   The defaults already point at Ollama. Copy .env.example to .env to
-   customise. To use a hosted OpenAI compatible endpoint instead, change
-   OPENAI_BASE_URL, OPENAI_API_KEY and OPENAI_MODEL. No code changes are
-   needed to swap models, which is what makes the stronger-model
-   comparison in the Evaluation chapter a configuration change rather
-   than a rewrite.
+`pip install -r requirements.txt` installs only the core three. The optional
+packages are listed at the bottom of that file as well.
 
-4. Run the app:
+**3. Pull the models.**
 
-       streamlit run app.py
+```
+ollama pull llama3.2
+ollama pull qwen2.5vl:7b
+```
 
-Steps 1 to 4 are the whole minimum setup. Nothing below this point is
-needed to start the app: with no optional package installed, every source
-can still be pasted in by hand and the pipeline runs normally. Add the
-optional modules only for the features you want to try.
+Then build the text model with a larger context window. Ollama allocates about
+4,096 tokens by default and silently truncates a longer prompt, so this step
+would matter for longer videos that are uploaded:
 
-## Enabling the input modules
+```
+ollama create llama3.2-ctx16k -f Modelfile
+```
 
-Each module checks its own dependencies and degrades gracefully, so an
-uninstalled module disables its upload box and leaves manual paste
-working rather than breaking the app. The sidebar shows what is live.
+**4. Copy the example configuration.**
 
-Phase A, speech-to-text:
+```
+copy .env.example .env
+```
 
-    pip install openai-whisper
+On macOS or Linux use `cp .env.example .env`. The defaults point at a local
+Ollama on `http://localhost:11434/v1` and need no editing.
 
-Also install ffmpeg (Windows: winget install --id=Gyan.FFmpeg -e, then
-restart the terminal). The first transcription downloads the Whisper
-model weights, so allow time and disk space on first use.
+**5. Start Ollama and run the app.**
 
-Phase B, slides and PDFs:
+```
+ollama serve
+streamlit run app.py
+```
 
-    pip install pypdf pytesseract Pillow
+## Using it
 
-For image OCR also install the Tesseract engine itself (on Windows use
-the UB Mannheim installer, https://github.com/UB-Mannheim/tesseract/wiki,
-and make sure tesseract.exe is on PATH). Digital PDFs need only pypdf.
+The sidebar takes three inputs, and any combination works.
 
-Phase B alternative, vision-based slide extraction (the project's third
-pre-trained model, operating on image data):
+- **Lecture audio.** Audio or video. The Whisper size is chosen in the sidebar.
+- **Slides.** PowerPoint, PDF or an image. Choose an extraction method. Per-slide
+  routing is offered first and sends a slide to the vision model only when it
+  looks visual, which avoids roughly 40 per cent of model calls.
+- **Your notes.** Typed or pasted.
 
-    pip install pymupdf
-    ollama pull qwen3-vl:4b
-
-PyMuPDF renders each PDF page to an image and the vision model reads it,
-transcribing the slide text and describing diagrams, figures and charts.
-That last part is the capability classical OCR lacks and is what the
-extractor comparison in the Evaluation chapter measures. PyMuPDF is pure
-pip with no system dependency, unlike poppler-based alternatives.
-
-When more than one slide extractor is available the app lets you choose
-between them and states underneath the slide text which path produced it.
-If you then edit that text by hand, the caption says so rather than
-crediting the extractor for your wording.
-
-PowerPoint decks, native text extraction:
-
-    pip install python-pptx
-
-Reads the deck's own structure, so slide boundaries, titles and table
-rows survive where OCR would flatten a rendered page. python-pptx is a
-parser, in the same category as pypdf: it reads the file format and does
-no inference, so it is not one of the project's three pre-trained models.
-Speaker notes are extracted only on request and are off by default,
-because no other extraction path can see them and including them would
-make this path look better simply by having more material.
-
-To run the OCR or vision paths on a pptx, the deck must first become
-pixels, and nothing in pure Python renders PowerPoint faithfully. If
-LibreOffice is installed it is detected automatically (on PATH or at
-C:\Program Files\LibreOffice\program\soffice.exe) and used headlessly to
-convert the deck to PDF. **Without LibreOffice the native text path still
-works**; the app says so and suggests exporting the deck to PDF from
-PowerPoint instead. LibreOffice is never required.
-
-Accepted upload formats:
-
-    Recording   mp3, wav, m4a, mp4, webm, flac, ogg
-    Slides      pptx, pdf, png, jpg, jpeg
-
-Video containers are accepted because a lecture recording usually arrives
-as video; Whisper decodes them through ffmpeg, so no conversion step is
-needed. Streamlit's default 200 MB upload cap is raised to 2000 MB in
-.streamlit/config.toml, since a 50 minute recording is commonly 375 to
-1100 MB. The trade-off is that Streamlit buffers an upload in the server
-process, so a large file causes a transient memory spike of about its own
-size.
-
-Availability summary:
-
-    Feature                  Needs (pip)          Needs (system)
-    Manual paste             nothing              nothing
-    Transcription            openai-whisper       ffmpeg
-    PDF text layer           pypdf                nothing
-    Image OCR                pytesseract, Pillow  Tesseract engine
-    Vision slide reading     pymupdf              an Ollama vision model
-    PowerPoint text          python-pptx          nothing
-    PowerPoint to pixels     pymupdf              LibreOffice
+The transcript and the extracted slide text appear on screen and can be edited
+before generation. The caption under each says which model produced it and
+says so again if you have edited it. Press generate to produce the notes and
+the quiz. Every run is saved to `outputs/` with a header recording the model,
+the settings, the extraction method and the quiz format check.
 
 ## Configuration
 
-Every setting is an environment variable, read in config.py and settable
-in .env (copy .env.example). All the optional controls are unset or
-neutral by default, so the default configuration reproduces the exact
-behaviour evaluated in the Preliminary Project Report.
+All settings are environment variables, read in `config.py` and settable in
+`.env`. The ones you are likely to change:
 
-    OPENAI_BASE_URL      Endpoint (default local Ollama)
-    OPENAI_API_KEY       API key (any value for Ollama)
-    OPENAI_MODEL         Text generation model (default llama3.2)
-    WHISPER_MODEL        Whisper size: tiny, base, small, medium
-    OUTPUT_DIR           Where runs are saved (default outputs)
+| Setting | Default | Purpose |
+|---|---|---|
+| `OPENAI_BASE_URL` | `http://localhost:11434/v1` | Endpoint. Any OpenAI compatible server works |
+| `OPENAI_API_KEY` | `ollama` | Any value for Ollama |
+| `OPENAI_MODEL` | `llama3.2-ctx16k` | Text model |
+| `VISION_MODEL` | `qwen2.5vl:7b` | Vision model for slide images |
+| `WHISPER_MODEL` | `base` | `tiny`, `base`, `small` or `medium` |
+| `OUTPUT_DIR` | `outputs` | Where runs are saved |
 
-    LLM_TEMPERATURE      Unset by default. When unset it is not sent to
-                         the model at all. Set (e.g. 0) with LLM_SEED to
-                         make runs repeatable when separating an input
-                         mode effect from sampling noise.
-    LLM_SEED             Unset by default. Sampling seed, as above.
-    LLM_TIMEOUT          Seconds per model call, default 600 (the OpenAI
-                         client's own default, so unchanged behaviour).
-
-    MAX_CONTEXT_WORDS    Unset by default, meaning no limit. When set,
-                         each source is independently capped to this many
-                         words; a real 50 minute transcript is around
-                         7,000 words and can overrun a local model's
-                         context. Truncation is always reported on screen
-                         and recorded in the saved output, never silent.
-
-    VISION_MODEL         Vision model for slide reading (qwen3-vl:4b)
-    VISION_DPI           Page render resolution (default 150)
-    VISION_MAX_PAGES     Page cap per deck (default 20), so a long deck
-                         cannot run away with one model call per page
-
-    QUIZ_MAX_ATTEMPTS    Default 1, meaning generate once and never
-                         retry: today's exact behaviour. Higher values
-                         regenerate a quiz that fails format validation,
-                         using the identical unchanged prompt. Validation
-                         itself always runs, so the failure rate is
-                         measured even on the default setting.
+`.env.example` lists the rest, including the routing thresholds, the sampling
+controls and the context word cap. All of them are optional.
 
 ## Running the tests
 
-    python -m unittest discover -s tests -t . -v
+```
+python -m unittest discover -s tests -t .
+```
 
-The suite runs without any model, network access or optional packages.
-It covers the cleaning functions, context building, prompt construction,
-the reproducibility controls, context truncation reporting, slide text
-provenance, quiz format validation and retry, the vision request format,
-the extractor comparison harness, and the full pipeline using an injected
-fake client, including the check that the quiz call receives the
-generated notes (the sequential orchestration in Figure 3.2 of the
-report). Whisper and OCR smoke tests
-run only when those packages are installed, so run the suite again on
-the development machine after enabling Phase A and Phase B.
+263 tests. They need no model, no network and no optional package. Tests that
+depend on an optional package are skipped when it is absent.
 
-## Running the evaluation batch
+## Evaluation scripts
 
-    python -m evaluation.run_eval --samples samples --out outputs
+```
+python -m evaluation.run_eval --samples samples --out outputs
+```
 
-Runs all four input modes over the sample files, saves each output, and
-writes outputs/evaluation_scores.csv with timing filled in and rubric
-columns left blank for human scoring. Point --samples at other topic
-folders to extend the evaluation across modules, which the Evaluation
-chapter needs.
+Runs the pipeline over every input mode and writes a CSV with the timings
+filled in and the scoring columns blank for marking by hand.
 
-Options for a controlled comparison:
+```
+python -m evaluation.compare_extractors --input samples/slides.pptx --out outputs
+```
 
-    --repeats 3              Run each mode three times, one CSV row per
-                             run, so a mode can be reported as a mean
-                             instead of a single sample
-    --temperature 0 --seed 42  Pass the reproducibility controls through
-    --slide-source "Tesseract OCR"  Label which extractor produced the
-                             slide text sample, so runs fed by different
-                             extractors can be told apart later
+Runs all four slide extraction methods over one file and writes their output
+and a comparison CSV.
 
-The CSV records model, temperature, seed and slide source alongside the
-timings, so a results file is self-describing months later. It also
-records the quiz format measurement (questions_found, returned_five,
-attempts, validation_passed), which replaces the "Returned five
-questions" column previously filled in by hand.
+```
+python -m evaluation.revalidate_outputs --outputs outputs
+```
 
-## Revalidating runs saved earlier
+Re-checks saved runs against the current quiz format validator.
 
-    python -m evaluation.revalidate_outputs --outputs outputs
+```
+python run_ablation.py
+```
 
-Re-reads every saved run, extracts the quiz section and applies the
-current validator, so runs generated before a validator correction can be
-restated without spending model time regenerating them. Prints a verdict
-per file plus the proportion of runs passing, and writes
-outputs/revalidated_quizzes.csv with the fault kinds counted separately
-(labels absent, labels present but blank, prompt placeholders echoed
-back). Files with no quiz section are skipped with a message rather than
-stopping the batch.
+Measures what per-slide routing saves and what it costs, against an all-vision
+extraction.
 
-## Comparing slide extractors
+## Project layout
 
-    python -m evaluation.compare_extractors --input samples/slides.pptx --out outputs
+```
+app.py                      Streamlit interface
+config.py                   Settings, read from the environment
+Modelfile                   Builds llama3.2-ctx16k
+run_ablation.py             Routing ablation
+core/
+  cleaning.py               Text cleaning
+  context_builder.py        Labelled context assembly
+  generation.py             Prompts, and both quiz paths
+  llm_client.py             OpenAI compatible client, text and vision
+  orchestrator.py           Pipeline controller, timing, saved output
+  provenance.py             Which extractor produced which text
+  quiz_validation.py        Quiz format checking
+modules/
+  audio_stt.py              Whisper transcription
+  slide_extraction.py       Chooses and runs an extraction method
+  slide_routing.py          Per-slide routing rule
+  slide_vision.py           Vision-language slide extraction
+  slides_ocr.py             PDF text layer and OCR
+  slides_pptx.py            PowerPoint text and page rendering
+evaluation/                 Measurement harnesses
+tests/                      263 unit and integration tests
+docs/
+  requirements_traceability.md   Requirements mapped to code and tests
+```
 
-Runs every available extraction path over the same file: native pptx
-text, the pypdf text layer, Tesseract OCR, and the vision model. A pptx
-is converted to PDF once with LibreOffice, after which the other three
-paths run exactly as they do for a PDF, giving four comparable techniques
-on one deck. Without LibreOffice only the native path runs, and the rest
-are skipped with a message. Each PDF page is rendered to
-an image once with PyMuPDF and those identical images are shared between
-the Tesseract and vision paths, so all image-based paths see exactly the
-same pixels and any quality difference is the model's rather than the
-input's. Unavailable paths are skipped with a warning, and the vision
-model is pre-flighted first so an unpulled model is reported up front,
-naming the pull command, instead of failing after the slow work.
+Development scripts sit at the top level beside these. `probe_context.py`,
+`probe_schema.py` and the three `probe_vision_*.py` scripts are the one-off
+investigations behind the model and configuration choices. `bakeoff_vision.py`
+compares candidate vision models, `wer_check.py` scores Whisper sizes,
+`auto_measures.py` computes automatic measures over saved runs,
+`run_refresh.py` rebuilds results after a model change and
+`verify_prompt5.py` checks a set of changes offline. None of them is imported
+by the application.
 
-Each path's text is saved to its own file for inspection and
-outputs/extractor_comparison.csv is written with the score columns left
-blank for manual marking, matching the OCR 5.2 sheet of the evaluation
-workbook, plus automatic character count, word count, timing, model and
-output file columns.
+## Notes
 
-## Development roadmap
-
-    Phase A  Wire Whisper transcription into the app        Gantt task 13
-    Phase B  PDF and OCR slide extraction                   Gantt task 13
-    Phase C  Full pipeline integration and interface polish Gantt task 14
-    Phase D  Component and end-to-end evaluation campaign   Gantt task 15
-    Phase E  Stronger-model comparison and refinement       Gantt task 15
-    Phase F  Final report, packaging, presentation video    Gantt tasks 16 to 18
-
-## Testing map (verification and validation)
-
-Unit testing: the pure-function and prompt tests in tests/. Integration
-testing: the orchestrator tests with the fake client, plus smoke runs
-against the live Ollama endpoint on the development machine. System
-testing: a manual walkthrough of the Streamlit app against the
-functional requirements table in the Design chapter. Acceptance testing:
-the testing peer review, using the three agree or disagree statements
-prepared in the report scaffold, plus rubric scoring by the developer
-acting as the target user.
+Lecture recordings, slide decks and generated output are not in this
+repository. `outputs/` and `.env` are ignored by git.

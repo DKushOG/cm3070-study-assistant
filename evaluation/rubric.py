@@ -1,9 +1,7 @@
-"""Evaluation rubric used across the project.
+"""The scoring criteria used across the project.
 
-The six criteria are the ones defined in the Design chapter and applied in
-the Preliminary Project Report evaluation. Scores are given by a human
-marker on a 1 to 5 scale. Keeping the definitions in code means the batch
-runner and the report always agree on the criteria.
+Six criteria, each scored by a human marker from 1 to 5. Keeping them here
+means the batch runner and the scoring sheets use the same wording.
 """
 
 CRITERIA = [

@@ -1,23 +1,11 @@
 """Pipeline controller.
 
-Runs the full generation workflow for one source combination: build the
-labelled context, generate revision notes, then generate the quiz from the
-context plus those notes. Timing is recorded per step so the evaluation can
-report processing time. The client is injected, which keeps this module
-fully testable with a fake client and lets the real client point at any
-OpenAI compatible endpoint.
+Runs one job from start to finish: build the labelled context, generate the
+revision notes, then generate the quiz from the context and those notes.
 
-The result also carries the reproducibility settings (model, endpoint,
-temperature, seed), any context truncation, which extractor produced the
-slide text, and the quiz format validation verdict, so save_result can write
-a self-documenting header for the report appendices and nothing is lost
-silently.
-
-Quiz validation always runs; retry does not. quiz_max_attempts defaults to 1,
-meaning the quiz is generated exactly once, so the default path makes the same
-two model calls with the same prompts as the evaluated prototype. That keeps
-baseline results valid while still measuring how often the documented format
-failures occur.
+The model client is passed in rather than created here, so tests can inject a
+fake one. Processing times and run settings are recorded so the saved output
+can be checked later.
 """
 import copy
 import os
@@ -41,36 +29,26 @@ class PipelineResult:
     quiz: str
     notes_seconds: float
     quiz_seconds: float
-    # Run metadata, defaulted so a fake client without these attributes still
-    # produces a valid result. Populated from the injected client in
-    # run_pipeline and recorded by save_result.
+    # Run settings, read from the client in run_pipeline. They default to None
+    # so a fake client in tests still produces a valid result.
     model: str = None
     base_url: str = None
     temperature: float = None
     seed: int = None
     max_context_words: int = None
     truncation: list = field(default_factory=list)
-    # Which extraction path produced the slide text, carried through from the
-    # interface so evaluation tables can compare runs fed by Tesseract against
-    # runs fed by the vision model. None records as "unset".
+    # Which extractor produced the slide text. None is recorded as "unset".
     slide_source: str = None
-    # Which Whisper size produced the transcript, so a saved run can be matched
-    # to the right arm of the word error rate comparison. None records as
-    # "unset", e.g. when the transcript was pasted in by hand.
+    # Which Whisper size produced the transcript. None is recorded as "unset".
     transcript_source: str = None
     # Quiz format validation, recorded on every run even when retry is off.
     quiz_attempts: int = 1
     quiz_validation: object = None
-    # The seed each quiz attempt was issued with, in order, so a run can be
-    # reproduced attempt by attempt. Empty when no seed is configured.
+    # Seed used for each quiz attempt, in order, so a run can be repeated.
     quiz_seeds: list = field(default_factory=list)
-    # Set when retries provably cannot differ, so wasted attempts are reported
-    # rather than silently burned.
+    # Set when a retry is unlikely to change the output, so the waste shows.
     quiz_retry_note: str = None
-    # Which generation path produced the quiz: the prompt-and-check path or
-    # the schema-constrained path. Recorded on every run so a saved output can
-    # always be attributed to one path, which is what makes the before-and-
-    # after comparison in the evaluation defensible.
+    # Which quiz path ran, the prompt-and-check path or the schema path.
     quiz_structured: bool = False
 
     @property
@@ -81,24 +59,8 @@ class PipelineResult:
 def seed_for_attempt(base_seed, attempt):
     """Return the sampling seed for one quiz attempt.
 
-    The rule is deterministic and documented so the whole retry sequence stays
-    reproducible: attempt 1 uses the configured seed exactly, and attempt n
-    uses base_seed + (n - 1). A single-attempt run is therefore unchanged, and
-    a three-attempt run with LLM_SEED=42 uses 42, 43, 44 every time it is
-    repeated.
-
-    What the rule buys is reproducibility of a retry sequence while sampling
-    is switched on: with LLM_TEMPERATURE above 0 each attempt samples
-    differently, and pinning the seeds to a known series means the same run
-    can be replayed attempt by attempt rather than only the first call being
-    repeatable.
-
-    It has no effect at LLM_TEMPERATURE=0. Decoding there is greedy, taking
-    the highest-probability token at every step with no sampling for a seed to
-    influence, so attempts carrying seeds 42, 43 and 44 return
-    character-for-character identical text. Retry is futile at that
-    temperature whatever the seed, which is the case _retry_determinism_note
-    reports.
+    Attempt 1 uses the configured seed and attempt n uses seed + (n - 1), so a
+    retry sequence can be repeated exactly. Returns None when no seed is set.
     """
     if base_seed is None:
         return None
@@ -106,14 +68,11 @@ def seed_for_attempt(base_seed, attempt):
 
 
 def _client_for_attempt(client, attempt):
-    """Return the client to issue one quiz attempt with.
+    """Return the client to use for one quiz attempt.
 
-    Attempt 1, and any run with no seed configured, uses the injected client
-    unchanged, so the default path is byte-identical to before. A later
-    attempt gets a shallow copy carrying the derived seed: the copy shares the
-    cached connection, and the injected client is never mutated. The prompt is
-    untouched either way, because the seed lives in client state and is read
-    per request rather than being part of the prompt.
+    Attempt 1 uses the injected client unchanged. A later attempt gets a
+    shallow copy carrying the derived seed, so the injected client is never
+    modified and the prompt stays the same.
     """
     base_seed = getattr(client, "seed", None)
     if attempt == 1 or base_seed is None:
@@ -124,52 +83,35 @@ def _client_for_attempt(client, attempt):
 
 
 def _retry_determinism_note(client, quiz_max_attempts):
-    """Explain when configured retries cannot produce a different result.
+    """Explain when retrying is unlikely to change the quiz.
 
-    Temperature 0 is greedy decoding: the highest-probability token is taken
-    at every step and no sampling takes place, so there is nothing for a seed
-    to influence. Attempts issued with seeds 42, 43 and 44 return
-    character-for-character identical text. Temperature is therefore checked
-    **before** the seed and reported whether or not a seed is set: an earlier
-    version returned as soon as a seed was present, which meant setting a seed
-    silenced this warning while leaving the retries just as futile. That is the
-    same failure shape as the two mistakes recorded in
-    docs/prompt5_plan.md, a signal that stops reporting a problem without
-    fixing it, so the order here is deliberate.
+    At temperature 0, changing the seed is not expected to produce a different
+    result because sampling is disabled.
 
-    Rather than silently burning model calls, the run records why the retries
-    were futile. The attempts are still made as configured: short-circuiting
-    them would change how many calls a configured retry issues, on an
-    assumption about endpoint determinism this project has not measured.
+    Returns a short explanation for the saved output, or None when retries may
+    produce a different result.
     """
     if quiz_max_attempts <= 1:
         return None
     if getattr(client, "temperature", None) == 0:
-        return ("retries cannot differ: temperature is 0, so decoding is "
-                "greedy and no sampling takes place. LLM_SEED has no effect "
-                "at this temperature, so varying it across attempts cannot "
-                "change the output. Set LLM_TEMPERATURE above 0 for retry to "
-                "be a real mechanism.")
+        return ("retries are unlikely to differ: temperature is 0, so "
+                "decoding is greedy and sampling is disabled. Changing "
+                "LLM_SEED is not expected to change the output at this "
+                "temperature. Set LLM_TEMPERATURE above 0 for retry to be a "
+                "real mechanism.")
     return None
 
 
 def run_pipeline(client, transcript=None, slide_text=None, notes=None,
                  max_words=None, slide_source=None, transcript_source=None,
                  quiz_max_attempts=1, quiz_structured=None):
-    """Run the two-call pipeline once and validate the resulting quiz.
+    """Run the two-call pipeline once and validate the quiz.
 
-    quiz_max_attempts defaults to 1: the quiz is generated exactly once and
-    the run makes the same two model calls, with the same prompts, as before
-    validation existed. When it is higher, a quiz that fails validation is
-    regenerated using the identical unchanged prompt. If every attempt fails,
-    the last attempt is kept, which is what "regenerate" plainly means and
-    avoids inventing a ranking heuristic between two bad outputs.
-
-    quiz_structured selects the generation path. None means "take the
-    configured default", which is off, so the legacy prompt-and-check path
-    remains the reference condition. Passing True issues the quiz call under a
-    JSON schema instead. Both paths produce the same four-line text and are
-    validated by the same unchanged validator.
+    quiz_max_attempts defaults to 1, so the default run makes the same two
+    model calls as before validation existed. A higher value regenerates a
+    failing quiz with the same prompt and keeps the last attempt if all of
+    them fail. quiz_structured picks the quiz path, and None means use the
+    configured default.
     """
     if quiz_structured is None:
         quiz_structured = config.QUIZ_STRUCTURED
@@ -183,16 +125,14 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
     revision_notes = generate_revision_notes(client, context)
     mid = time.perf_counter()
 
-    # quiz_seconds covers every attempt, so reported timing reflects the real
-    # cost of producing the quiz that was kept.
+    # Include the time spent on every quiz attempt, including retries.
     attempts = 0
     quiz = ""
     validation = None
     seeds = []
     for attempt in range(1, max(1, quiz_max_attempts) + 1):
         attempts = attempt
-        # Only the seed varies between attempts; the prompt bytes are
-        # identical because the same context and notes are passed every time.
+        # Only the seed changes between attempts. The prompt stays identical.
         attempt_client, attempt_seed = _client_for_attempt(client, attempt)
         if attempt_seed is not None:
             seeds.append(attempt_seed)
@@ -214,8 +154,7 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
         quiz=quiz,
         notes_seconds=mid - start,
         quiz_seconds=end - mid,
-        # Read defensively: the fake client used in tests need not expose
-        # these, in which case they stay None ("unset" in the header).
+        # Read defensively: a fake client in tests need not have these.
         model=getattr(client, "model", None),
         base_url=getattr(client, "base_url", None),
         temperature=getattr(client, "temperature", None),
@@ -233,19 +172,16 @@ def run_pipeline(client, transcript=None, slide_text=None, notes=None,
 
 
 def _format_setting(value):
-    """Render a run setting for the header, distinguishing an unset value
-    (None) from a real one such as 0, which is a meaningful temperature."""
+    """Render one setting for the header, keeping 0 different from unset."""
     return "unset" if value is None else str(value)
 
 
 def save_result(result, output_dir="outputs"):
-    """Write a run to a timestamped text file and return the path.
+    """Write the run to a timestamped text file and return the path.
 
-    The header records the model, endpoint and reproducibility settings
-    (temperature and seed), any context truncation, the extractor that
-    produced the slide text and the quiz validation verdict, so every saved
-    run is self-documenting for the report appendices and nothing is lost
-    silently.
+    The header records the model, endpoint, sampling settings, any truncation,
+    the slide source and the quiz verdict, so a saved run can be read on its
+    own later.
     """
     os.makedirs(output_dir, exist_ok=True)
     safe_mode = result.mode.lower().replace(" ", "_").replace(",", "")
@@ -282,8 +218,7 @@ def save_result(result, output_dir="outputs"):
                 handle.write(f"  {event.describe()}\n")
         else:
             handle.write("truncation: none\n")
-        # New fields are appended after the existing header lines so nothing
-        # already read by the evaluation workbook shifts position.
+        # Added after the existing header lines, so older files still line up.
         handle.write("quiz_seeds="
                      + (",".join(str(seed) for seed in result.quiz_seeds)
                         if result.quiz_seeds else "unset") + "\n")

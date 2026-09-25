@@ -1,6 +1,6 @@
 """Find out why the vision model returns nothing on 44 per cent of slides.
 
-The C3 instrumentation pass called qwen3-vl:4b once per slide across 111
+The slide instrumentation pass called qwen3-vl:4b once per slide across 111
 pages. Forty-nine of them came back completely empty, and two more came back
 cut off in mid-sentence. Every one of those fifty-one calls took almost
 exactly the same time: 19.0 to 19.4 seconds for three of the decks, 23.8 to

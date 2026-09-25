@@ -1,55 +1,50 @@
-"""Quiz format validation.
+"""Validate the format of generated quiz questions.
 
-The Preliminary Project Report documented two recurring failure modes in the
-generated quiz: runs that returned fewer than the five questions requested,
-and question types falling outside the four intended categories. This module
-detects both by inspecting the model's output only. It never changes the
-prompt, so the generation behaviour evaluated in the report is untouched and
-the failure rate measured here is the failure rate of the evaluated system.
+Checks that a quiz holds five questions, each with the four labelled lines the
+prompt asks for, real content on each line rather than a blank or the prompt's
+own placeholder wording, a question type from the four intended categories and
+a source basis naming one of the inputs the student supplied.
 
-Measuring matters as much as fixing: validation runs even when retry is
-disabled, which turns a qualitative observation in the report into a
-quantitative result. The functions are pure and dependency-free so the
-parsing rules can be unit tested exhaustively without a model.
+A quiz that passes is correctly formatted. That says nothing about whether the
+suggested answers are true or whether the named source really supports them,
+which is scored by hand instead.
 
-This module is a measuring instrument, so its target is accuracy rather than
-leniency or strictness. Its first contact with real output exposed two ways of
-being inaccurate, and both are corrected here:
+The module reads the model's output only and does not change the prompt, so
+generation behaves as it did in the version that was evaluated. Validation
+runs on every run, including when retry is switched off, so the failure rate
+is recorded rather than only noticed. The functions are pure and have no
+dependencies, so the parsing rules can be tested without a model.
 
-*   **Under-reporting.** The earlier parser required a label to be exactly
+Two lessons from real output shaped the parser:
+
+*   Under-reporting. The first version needed a label to be exactly
     "Question:" at the start of a line. Real output wrote
-    "**Question 1: Definition**", where the number sits inside the label, so
-    every block was skipped and a quiz containing five recognisable questions
-    was reported as zero. That hid the run's real faults behind a parsing
-    failure. Labels are now recognised with an embedded number and surrounding
+    "**Question 1: Definition**", with the number inside the label, so every
+    block was skipped and a quiz with five readable questions was counted as
+    zero. Labels are now recognised with an embedded number and surrounding
     markdown.
-*   **Over-crediting.** A block whose text is the prompt's own placeholder
-    wording ("the question text") is not a question, and an answer line of
-    underscores is not an answer. Both were previously counted as present.
+*   Over-crediting. A block whose text is the prompt's own placeholder wording
+    ("the question text") is not a question, and an answer line of underscores
+    is not an answer. Both used to be counted as present.
 
-Recognising a decorated label never repairs the content behind it. When
-"**Question 1: Definition**" is recognised, the word "Definition" is a type
-name standing where the question text should be: it is not credited as
-question text, and no "Question type:" is inferred from it, because the model
-never wrote that line. Both are reported as faults.
+Recognising a decorated label does not repair the content behind it. In
+"**Question 1: Definition**" the word "Definition" is a type name standing
+where the question text should be. It is not credited as question text and no
+"Question type:" line is inferred from it, because the model did not write one.
+Both are reported as faults.
 
-Three fault kinds are tracked separately, because "the line is absent", "the
-line is present but says nothing" and "the line repeats the prompt back" are
-different failures and the Evaluation chapter counts them independently.
+Three fault kinds are counted separately, because a line that is absent, a line
+that is present but says nothing and a line that repeats the prompt back are
+different failures and the evaluation reports them independently.
 
-The source basis is validated the same way the question type already was,
-against the three inputs the system actually accepts. This matters more than a
-formatting check: the argument of the whole project is that a student can see
-which source produced a statement, so a provenance field naming something that
-was never an input undermines the claim the system is built on. Naming the
-generated revision notes is reported as its own fault rather than as a plain
-miss, because attributing an answer to the system's own first model call is a
-different and more interesting failure than naming nothing at all.
+Naming the system's own generated revision notes as the source basis is
+reported as its own fault rather than as a plain miss, since crediting an
+answer to the system's first model call is a different failure from naming
+nothing at all.
 
-The question-shape check is deliberately a warning and never a failure. The
-prompt does not literally demand a question mark, so a new soft signal must not
-move the pass rate that earlier results were collected under. Warnings are held
-separately from failures and `passed` is computed from failures alone.
+The question-shape check is a warning rather than a fault. The prompt asks for
+questions but does not literally require a question mark, so this signal is
+kept out of the verdict and `passed` is worked out from failures alone.
 """
 import re
 from dataclasses import dataclass, field
@@ -62,8 +57,8 @@ ANSWER_LABEL = "Suggested answer"
 TYPE_LABEL = "Question type"
 BASIS_LABEL = "Source basis"
 REQUIRED_LABELS = (QUESTION_LABEL, ANSWER_LABEL, TYPE_LABEL, BASIS_LABEL)
-# Labels that describe the question currently open. They may appear mid-line;
-# see _ATTRIBUTE_PATTERNS for why the question label may not.
+# Labels that describe the question currently open. They may appear mid-line.
+# See _ATTRIBUTE_PATTERNS for why the question label may not.
 ATTRIBUTE_LABELS = (ANSWER_LABEL, TYPE_LABEL, BASIS_LABEL)
 VALID_QUESTION_TYPES = ("definition", "explanation", "comparison",
                         "application")
@@ -107,7 +102,7 @@ INTERROGATIVE_OPENERS = frozenset({
 INTERROGATIVE_PAIRS = frozenset({"in what", "to what", "under what"})
 
 # Leading decoration a model may put before a label: markdown emphasis, block
-# quotes, heading hashes, and list numbering such as "3) ".
+# quotes, heading hashes and list numbering such as "3) ".
 _DECORATION = r"[\s>*_#-]*(?:\d+[.)]\s*)?[\s*_#]*"
 # A label may carry its own number before the colon, as in "Question 1:".
 _LABEL_TAIL = r"\s*\d*\s*:"
@@ -125,11 +120,11 @@ _QUESTION_START = re.compile(
     re.IGNORECASE)
 
 # Attribute labels are matched anywhere on a line, because real output ran the
-# answer label on directly after the question text ("...crucial step?
+# answer label straight on after the question text ("...crucial step?
 # Suggested answer: ___"). Attaching an attribute to the block already open
-# cannot invent a question, so the risk this tolerance carries is much smaller
-# than the risk of anchoring it and mis-scoring every such line as a missing
-# answer. The match must still begin at a word boundary.
+# does not create a question, so this is safer than anchoring it and scoring
+# every such line as a missing answer. The match still begins at a word
+# boundary.
 _ATTRIBUTE_PATTERNS = {
     label: re.compile(
         r"(?:(?<=\s)|^)[*_]*\s*" + _label_words(label) + _LABEL_TAIL,
@@ -201,8 +196,8 @@ def normalise_type(value):
 def names_generated_notes(value):
     """Return whether a source basis names the generated revision notes.
 
-    Checked before the input-source terms so "Revision notes" is never read as
-    the student notes input; the two differ by one word but mean opposite
+    Checked before the input-source terms so "Revision notes" is not read as
+    the student notes input. The two differ by one word and mean opposite
     things about where the answer came from.
     """
     text = _normalise_phrase(value)
@@ -231,9 +226,9 @@ def basis_sources(value):
 def looks_like_a_question(value):
     """Return whether question text has the shape of a question.
 
-    A question mark is the primary signal; an opening interrogative is a
-    secondary one for output that omits the mark. This is a soft check whose
-    result is reported as a warning and never as a validation failure.
+    A question mark is the clearest signal. An opening interrogative is a
+    second one, for output that leaves the mark out. This is a soft check and
+    its result is reported as a warning rather than a failure.
     """
     if "?" in (value or ""):
         return True
@@ -295,23 +290,23 @@ class QuestionBlock:
 
     @property
     def is_complete(self):
-        """No label absent, blank, echoed back from the prompt, or naming a
-        source that was never an input. Warnings are excluded by design."""
+        """True when no label is absent, blank, echoed back from the prompt
+        or naming a source that was not an input. Warnings are not counted."""
         return not self.faults
 
 
 @dataclass
 class QuizValidation:
-    """Structured verdict on one generated quiz.
+    """Verdict on one generated quiz.
 
-    Carries the detail the Evaluation chapter needs (how many questions, which
-    checks failed and why), not just a pass or fail flag.
+    Carries how many questions were found, which checks failed and why, rather
+    than a pass or fail flag alone.
     """
     questions_found: int
     blocks: list = field(default_factory=list)
     failures: list = field(default_factory=list)
-    # Soft signals, held apart from failures on purpose: passed is computed
-    # from failures alone, so a warning can never change a verdict.
+    # Soft signals, held apart from failures. passed is worked out from
+    # failures alone, so a warning does not change the verdict.
     warnings: list = field(default_factory=list)
 
     @property
@@ -327,8 +322,8 @@ class QuizValidation:
         return sum(len(block.shape_warnings) for block in self.blocks)
 
     def count_faults(self, kind):
-        """Count one kind of fault across all blocks, so each can be reported
-        separately in the evaluation tables."""
+        """Count one kind of fault across all blocks, so each one can be
+        reported separately."""
         if kind in (INVALID_BASIS_FAULT, GENERATED_NOTES_FAULT):
             return sum(block.basis_faults.count(kind)
                        for block in self.blocks)
@@ -341,7 +336,7 @@ class QuizValidation:
 
     def describe_warnings(self):
         """One-line summary of the soft signals, for the columns that report
-        them alongside (never inside) the failure text."""
+        them beside the failure text rather than inside it."""
         return "; ".join(self.warnings)
 
     def describe(self):
@@ -359,9 +354,9 @@ def _clean_value(text):
 def _scan_line(line):
     """Split one line into (text before the first label, [(label, value)]).
 
-    The question label is recognised only at the start of a line; attribute
-    labels are recognised anywhere. Overlapping matches are dropped so a label
-    cannot be counted twice.
+    The question label is recognised only at the start of a line, while
+    attribute labels are recognised anywhere. Overlapping matches are dropped
+    so a label is not counted twice.
     """
     matches = []
     start_match = _QUESTION_START.match(line)
@@ -394,8 +389,8 @@ def _scan_line(line):
 def parse_quiz(quiz_text):
     """Parse quiz text into QuestionBlocks.
 
-    A question label starts a new block; attribute labels attach to the block
-    currently open. An unlabelled line continues the value most recently
+    A question label starts a new block and attribute labels attach to the
+    block currently open. An unlabelled line continues the value most recently
     opened, because real output puts the question text on the line after the
     heading. Content before the first question label (a stray preamble) is
     ignored rather than treated as a question.
@@ -472,9 +467,9 @@ def _classify_basis(block):
 def _classify_shape(block):
     """Warn when the question text does not read as a question.
 
-    A warning, never a fault: the prompt asks for questions but does not
-    literally require a question mark, so this must not move the pass rate
-    that earlier results were collected under.
+    A warning rather than a fault. The prompt asks for questions but does not
+    literally require a question mark, so this signal is kept out of the pass
+    rate that earlier results were collected under.
     """
     if QUESTION_LABEL not in block.seen_labels:
         return
@@ -490,12 +485,12 @@ def _label_list(labels):
 
 
 def validate_quiz(quiz_text, expected_count=EXPECTED_QUESTION_COUNT):
-    """Validate generated quiz text against the format the prompt requests.
+    """Validate generated quiz text against the format the prompt asks for.
 
-    Checks exactly five questions, all four labelled lines present on each and
-    carrying real content rather than a blank or the prompt's own placeholder
-    wording, and every declared question type inside the four intended
-    categories. Returns a QuizValidation carrying the detail of what failed.
+    Checks for five questions, all four labelled lines on each, real content on
+    each line rather than a blank or the prompt's placeholder wording, and a
+    declared question type from the four intended categories. Returns a
+    QuizValidation holding the detail of what failed.
     """
     blocks = parse_quiz(quiz_text)
     failures = []
@@ -516,9 +511,9 @@ def validate_quiz(quiz_text, expected_count=EXPECTED_QUESTION_COUNT):
             failures.append(
                 f"question {block.number} repeats the prompt placeholder for "
                 + _label_list(block.placeholder_labels))
-        # A type that is absent, blank or echoed is already reported above;
-        # only a real but wrong value is reported here, so one fault is never
-        # counted twice in the failure statistics.
+        # A type that is absent, blank or echoed is already reported above.
+        # Only a real but wrong value is reported here, so one fault is not
+        # counted twice in the figures.
         if (TYPE_LABEL in block.seen_labels
                 and TYPE_LABEL not in block.empty_labels
                 and TYPE_LABEL not in block.placeholder_labels

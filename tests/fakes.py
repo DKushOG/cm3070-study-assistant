@@ -1,20 +1,24 @@
-"""Test doubles for the LLM client.
+"""Stand-in clients used in place of the model.
 
-The fake records every prompt it receives and returns queued replies in
-order, which lets the tests verify orchestration behaviour, including the
-sequential dependency of the quiz call on the generated notes, without any
-model or network access.
+The fake records every prompt it receives and returns queued replies in order,
+so the tests can check the orchestration, including the quiz call depending on
+the generated notes, without a model or a network.
 
-It also exposes the same settings attributes as the real LLMClient (model,
-base_url, temperature, seed), all optional, so tests can check that the
-orchestrator records them in the saved output without touching a real model.
-chat_with_images mirrors the real vision method and records the prompt and
-image URLs it received, so the vision-path tests can assert the request
-without a real model or any real image.
+It carries the same settings attributes as the real LLMClient, all optional,
+so a test can check that the orchestrator records them. chat_with_images
+matches the real vision method and records the prompt and image URLs it was
+given, so the vision tests can check the request without a real image.
 """
 
 
 class FakeLLMClient:
+    """A scripted client that returns queued replies in order.
+
+        Records every prompt and image URL it is given, so a test can check
+        what the code sent as well as what it did with the reply.
+
+    """
+
     def __init__(self, replies=None, model=None, base_url=None,
                  temperature=None, seed=None, reachable=True,
                  finish_reasons=None):

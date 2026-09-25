@@ -1,3 +1,8 @@
+"""Tests for the two generation prompts.
+
+Part of the context, prompts and provenance group.
+"""
+
 import unittest
 
 from core import generation
@@ -5,6 +10,8 @@ from tests.fakes import FakeLLMClient
 
 
 class NotesPromptTests(unittest.TestCase):
+    """The notes prompt carries the context and the source-only rule."""
+
     def test_prompt_contains_context_and_constraints(self):
         client = FakeLLMClient()
         generation.generate_revision_notes(client, "THE CONTEXT")
@@ -15,6 +22,8 @@ class NotesPromptTests(unittest.TestCase):
 
 
 class QuizPromptTests(unittest.TestCase):
+    """The quiz prompt carries the context, the notes and the format rules."""
+
     def test_prompt_contains_context_and_notes(self):
         client = FakeLLMClient()
         generation.generate_quiz_questions(client, "THE CONTEXT",

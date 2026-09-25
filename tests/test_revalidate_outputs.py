@@ -1,9 +1,6 @@
-"""Tests for revalidating already-saved runs.
+"""Tests for checking already-saved runs with the current validator.
 
-Files are constructed in a temporary directory rather than read from the real
-outputs/ folder, so the suite does not depend on which runs happen to be on the
-machine. Windows line endings and the metadata header are exercised
-deliberately, since those are what the parser has to survive.
+Part of the quiz validation and revalidation group.
 """
 import csv
 import io
@@ -43,6 +40,8 @@ def write_run(directory, name, quiz, line_ending="\r\n"):
 
 
 class ExtractQuizTests(unittest.TestCase):
+    """The quiz section is read out of a saved file, without the header."""
+
     def test_windows_line_endings_are_normalised(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = write_run(tmp, "run.txt", GOOD_QUIZ)
@@ -72,6 +71,8 @@ class ExtractQuizTests(unittest.TestCase):
 
 
 class RevalidateFileTests(unittest.TestCase):
+    """A file with no quiz section is skipped rather than ending the batch."""
+
     def test_valid_quiz_reports_passed(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = write_run(tmp, "run.txt", GOOD_QUIZ)
@@ -93,6 +94,8 @@ class RevalidateFileTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
+    """The batch writes its CSV and reports the share of runs that passed."""
+
     def run_main(self, argv):
         buffer = io.StringIO()
         with redirect_stdout(buffer):

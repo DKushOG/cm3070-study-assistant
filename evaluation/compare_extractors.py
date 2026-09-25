@@ -1,34 +1,30 @@
-"""Extractor comparison harness (component evaluation for section 5.2).
+"""Compare the slide extraction methods on the same input.
 
-Runs every available slide-extraction path over the same input and records
-what each produced, which is the "evidence of testing and rejecting models"
-the project brief demands and the justification for the vision module. The
-four paths are:
+Runs every extraction path that is available over one file and records what
+each produced, so the choice of method is backed by a measurement. The four
+paths are:
 
-  * Native pptx - python-pptx reading the deck's own structure (a parser, not
-                  a model, in the same category as pypdf)
-  * pypdf       - the PDF's embedded text layer (no model)
+  * Native pptx - python-pptx reading the deck's own structure, a parser
+                  rather than a model, in the same category as pypdf
+  * pypdf       - the PDF's embedded text layer, no model
   * Tesseract   - classical OCR on the rendered page images
   * Vision      - the vision-language model on the same rendered page images
 
-A .pptx input is converted to PDF once with LibreOffice, after which the pypdf,
-Tesseract and vision paths run exactly as they do for a PDF, so one deck yields
-four comparable techniques. Without LibreOffice the native path still runs and
-the others are skipped with a message. Speaker notes are never included here:
-they are content the OCR and vision paths cannot see, so including them would
-make the native path win by having more material rather than by extracting
-better, which is the same fairness argument as sharing the rendered pages.
+A pptx input is converted to PDF once with LibreOffice, after which the pypdf,
+Tesseract and vision paths run as they do for a PDF, so one deck gives four
+comparable results. Without LibreOffice the native path still runs and the
+others are skipped with a message.
 
-Fairness argument (stated here because it is quoted in the report): Tesseract
-cannot read a PDF directly, so each PDF page is rendered to an image *once*
-with PyMuPDF and those identical images are shared between the Tesseract and
-vision paths. All image-based paths therefore see exactly the same pixels,
-and any quality difference is the model's, not the input's.
+Two things keep the comparison fair. Tesseract cannot read a PDF directly, so
+each page is rendered to an image once with PyMuPDF and the same images are
+given to both the Tesseract and the vision path, which means any difference
+comes from the method rather than the input. Speaker notes are left out, since
+the OCR and vision paths cannot see them and including them would let the
+native path win on material rather than on extraction.
 
-Unavailable paths are skipped with a warning instead of crashing, mirroring
-how evaluation/run_eval.py handles missing sources. The client is injectable
-for testing, and the scoring columns are left blank for manual marking, as
-in run_eval.py.
+A path that cannot run is skipped with a warning rather than crashing, as
+evaluation/run_eval.py does for missing sources. The client can be injected for
+testing, and the scoring columns are left blank for marking by hand.
 
 Usage:
     python -m evaluation.compare_extractors --input samples/slides.pdf --out outputs
@@ -52,9 +48,9 @@ PYPDF_PATH = "pypdf (embedded text layer)"
 TESSERACT_PATH = "Tesseract OCR"
 VISION_PATH = "Vision model"
 
-# The manual columns must match the OCR 5.2 sheet of the evaluation workbook
-# exactly, in this order and spelling; the four score columns and Notes stay
-# blank for hand marking. The automatic columns are appended after them.
+# The manual columns must match the scoring sheet in the evaluation workbook
+# exactly, in this order and spelling. The four score columns and Notes stay
+# blank for marking by hand, and the automatic columns are added after them.
 MANUAL_COLUMNS = [
     "Slide set",
     "Pages",
@@ -107,7 +103,7 @@ def build_paths(suffix, pypdf_ok, ocr_ok, render_ok, pptx_ok=False,
     def consider(name, ok, reason):
         (runnable if ok else skipped).append(name if ok else (name, reason))
 
-    # The native path reads the deck's own structure; pptx only.
+    # The native path reads the deck's own structure, so pptx only.
     consider(NATIVE_PPTX_PATH, is_pptx and pptx_ok,
              "needs a .pptx file and python-pptx installed")
     # pypdf reads a PDF's text layer, including one converted from a pptx.
@@ -117,7 +113,7 @@ def build_paths(suffix, pypdf_ok, ocr_ok, render_ok, pptx_ok=False,
     tesseract_ok = ocr_ok and (is_image or (pdf_reachable and render_ok))
     consider(TESSERACT_PATH, tesseract_ok,
              "needs pytesseract, PyMuPDF to render, and LibreOffice for a pptx")
-    # The vision model needs rendering; an image is sent directly.
+    # The vision model needs rendering, except for an image sent directly.
     vision_ok = is_image or (pdf_reachable and render_ok)
     consider(VISION_PATH, vision_ok,
              "needs PyMuPDF to render, and LibreOffice for a pptx")
@@ -157,15 +153,14 @@ def _run_path(name, input_path, pdf_path, suffix, images, client,
     conversion for a pptx, so the PDF text layer path is identical either way.
 
     report_out, when a dictionary is supplied, is filled with the vision
-    path's per-page report: which pages could not be read, which were cut
-    short, and how many retries were spent. It is optional so the signature
-    stays compatible, but it should always be passed here. Without it this
-    harness cannot tell an empty reply from a blank slide, and that is
-    precisely how the comparison in the draft report came to be computed over
-    an output in which 15 of 36 pages were empty.
+    path's per-page report: which pages could not be read, which were cut short
+    and how many retries were used. It is optional so the signature stays
+    compatible, but it should be passed here. Without it the harness cannot
+    tell an empty reply from a blank slide, which is how an earlier comparison
+    came to be computed over an output where 15 of 36 pages were empty.
     """
     if name == NATIVE_PPTX_PATH:
-        # Speaker notes stay off: see the module docstring's fairness note.
+        # Speaker notes stay off, for the reason in the module docstring.
         return (slides_pptx.extract_pptx_text(input_path, include_notes=False),
                 "python-pptx parser")
     if name == PYPDF_PATH:

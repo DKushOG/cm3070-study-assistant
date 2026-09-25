@@ -1,48 +1,41 @@
-"""C3 instrumentation pass: per-slide features against vision-model outcome.
+"""Collect slide features and measure the benefit of vision extraction.
 
-The system currently applies one extraction path to a whole deck. Every page
-of a slide deck is either read cheaply as text or sent to the vision-language
-model, and the choice is made once for the deck rather than once per slide.
-That is wasteful in one direction and lossy in the other. A text-dense slide
-sent to the vision model costs a model call to recover text that pypdf already
-had. A slide that is a single unlabelled diagram, read by the text path,
-yields almost nothing.
+This script gathered the evidence the per-slide routing rule was derived from.
+It records the features a rule could use before any model call is made, and it
+records what the vision model actually returned for the same page, so a
+threshold can be chosen from measurements rather than guessed. Deriving a
+threshold from the run that also applies it would be circular, so the two
+steps are kept apart. The rule itself lives in modules/slide_routing.py, which
+this script imports, so both use the same logic.
 
-C3 is the proposal that the choice should be made per slide, by a rule using
-features that can be computed before any model call is made. This script does
-not implement that rule. It gathers the evidence needed to derive one, which
-is a deliberately separate step: deriving a threshold from the same run that
-implements it would be circular.
+What it records for every page of every deck in the corpus:
 
-What it records, for every page of every deck in the corpus:
+  * Features obtainable without a model call. Text yield from the PDF text
+    layer, the number of text blocks, the count and page area of placed
+    images, the number of vector drawing operations, and how much of the
+    rendered page is not blank. For a PowerPoint deck it also records the
+    native shape counts and picture area.
 
-  * Cheap features, all obtainable without a model call. Text yield from the
-    PDF text layer, the number of text blocks, the count and page area of
-    placed images, the number of vector drawing operations, and the
-    proportion of the rendered page that is not blank. For a PowerPoint
-    deck, the native shape counts and picture area are recorded as well.
-
-  * The outcome of calling the vision model on that page: how long it took,
+  * The result of calling the vision model on that page: how long it took,
     how much it returned, and how much of what it returned was not already
-    available from the text layer.
+    in the text layer.
 
-The outcome measure is deliberately a proxy and is named as one. "Novel
-content words" counts content words in the vision output that do not appear
-in the page's text layer. It rewards a model that described a diagram the
-text layer could not see, and it does not reward one that re-transcribed
-text pypdf already had. It also cannot distinguish a genuine description
-from a paraphrase of existing text, which is why a manual column is provided
-and why a sample should be scored by hand before any threshold is fixed.
+The outcome measure is a proxy and is named as one. "Novel content words"
+counts content words in the vision output that do not appear in the page's
+text layer. It rewards a model that described a diagram the text layer could
+not see, and it does not reward one that re-typed text pypdf already had. It
+cannot tell a real description from a paraphrase of existing text, which is
+why the sheet carries a manual column and why a sample is scored by hand
+before a threshold is fixed.
 
-Fairness follows evaluation/compare_extractors.py: a PowerPoint deck is
-converted to PDF once with LibreOffice, after which every deck is treated
-identically, and each page is rendered once and shared between the feature
-pass and the model call.
+Fairness follows evaluation/compare_extractors.py. A PowerPoint deck is
+converted to PDF once with LibreOffice, after which every deck is treated the
+same way, and each page is rendered once and shared between the feature pass
+and the model call.
 
-Designed to run unattended. Rows are written and flushed as each page
-finishes, a page that fails is recorded with its error rather than ending the
-run, and re-running against an existing output directory resumes where it
-stopped instead of repeating work.
+Built to run unattended. Rows are written and flushed as each page finishes, a
+page that fails is recorded with its error rather than ending the run, and
+re-running against an existing output directory resumes where it stopped.
 
 Usage:
     # check the feature pass works, no model calls, takes under a minute
@@ -70,9 +63,9 @@ from modules import slide_routing, slide_vision, slides_pptx
 
 DECK_SUFFIXES = (".pptx", ".pdf")
 
-# Resolution for the blankness measurement only. Deliberately far lower than
-# the extraction DPI: this is a whole-page statistic, so rendering it at
-# extraction quality would cost time for no extra information.
+# Resolution for the blankness measurement only, far lower than the extraction
+# DPI. This is a whole-page statistic, so rendering it at extraction quality
+# would cost time and add nothing.
 INK_DPI = 40
 
 # A pixel darker than this counts as marked. Slides are overwhelmingly light
@@ -220,14 +213,13 @@ def ink_ratio(page):
 def placed_image_features(page):
     """Count and total area of images actually placed on this page.
 
-    Deliberately `get_image_info` rather than `get_images`. The latter lists
-    the image XObjects in the page's resource dictionary, and a PDF produced
-    by LibreOffice from a PowerPoint deck gives every page the same inherited
-    resource list. The first version of this script used it and every page of
-    a converted deck reported an identical count: 18 for the first deck, 32
-    for the second, 24 for the fourth. The number was not a per-page
-    measurement at all, and because it was plausible it would have been
-    reported as one.
+    Uses `get_image_info` rather than `get_images`. The second lists the image
+    XObjects in the page's resource dictionary, and a PDF that LibreOffice
+    produced from a PowerPoint deck gives every page the same inherited list.
+    The first version of this script used it and every page of a converted deck
+    reported the same count: 18 for the first deck, 32 for the second, 24 for
+    the fourth. That was not a per-page measurement, and it looked plausible
+    enough to have been reported as one.
 
     `get_image_info` returns only images with a placement on the page, each
     with a bounding box, so the count is real and an area can be derived.
@@ -369,11 +361,11 @@ def content_tokens(text):
 def novelty(vision_text, layer_text):
     """How much of the vision output was not already in the text layer.
 
-    Set difference on content words rather than a sequence comparison,
-    because the vision model rewrites reading order freely and an order
-    sensitive measure would score honest transcription as novel. The
-    limitation stands: a paraphrase of existing text still counts as novel
-    under this measure, which is why the manual column exists.
+    A set difference on content words rather than a sequence comparison,
+    because the vision model changes the reading order and an order-sensitive
+    measure would score plain transcription as new. The limitation is that a
+    paraphrase of existing text still counts as new here, which is why the
+    sheet carries a manual column.
     """
     vision = content_tokens(vision_text)
     layer = content_tokens(layer_text)

@@ -1,10 +1,6 @@
-"""Tests for native PowerPoint extraction.
+"""Tests for reading PowerPoint files.
 
-Where a real deck is needed it is built in a temporary file by python-pptx
-itself, so the suite carries no binary fixture and needs no deck from the
-author's machine. Those tests skip when python-pptx is absent; everything that
-can be tested without it (availability flags, LibreOffice detection, the
-missing-dependency messages) always runs. No test launches LibreOffice.
+Part of the input modules and extractor comparison group.
 """
 import os
 import tempfile
@@ -46,6 +42,8 @@ requires_pptx = unittest.skipUnless(slides_pptx.is_available(),
 
 
 class AvailabilityTests(unittest.TestCase):
+    """The two availability checks, including the Windows install location."""
+
     def test_availability_flags_are_boolean(self):
         self.assertIsInstance(slides_pptx.is_available(), bool)
         self.assertIsInstance(slides_pptx.libreoffice_available(), bool)
@@ -68,6 +66,8 @@ class AvailabilityTests(unittest.TestCase):
 
 
 class LibreOfficeAbsentTests(unittest.TestCase):
+    """Without LibreOffice, conversion explains what is missing."""
+
     def test_conversion_without_libreoffice_explains_the_fallback(self):
         """The message must name both ways forward, because this is the path a
         user without LibreOffice actually hits."""
@@ -83,14 +83,21 @@ class LibreOfficeAbsentTests(unittest.TestCase):
 
 @requires_pptx
 class ExtractPptxTextTests(unittest.TestCase):
+    """Slide text keeps its structure.
+
+        Page markers, titles and table rows survive, and speaker notes are
+        left out unless they are asked for.
+
+    """
+
     def setUp(self):
         handle, self.path = tempfile.mkstemp(suffix=".pptx")
         os.close(handle)
         self.addCleanup(os.unlink, self.path)
 
     def test_slide_boundaries_use_the_shared_page_marker(self):
-        """The same marker as the vision path, so section 5.2 outputs line
-        up directly."""
+        """The same marker as the vision path, so the outputs of different
+        extraction methods line up when they are compared."""
         build_deck(self.path)
         text = slides_pptx.extract_pptx_text(self.path)
         self.assertEqual(text.count(slide_vision.PAGE_MARKER), 2)

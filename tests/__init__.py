@@ -1,16 +1,12 @@
-"""Test package initialisation.
+"""Test package setup.
 
-This module exists to make the suite hermetic. config.py reads its settings
-from the environment at import time, so a shell that still carries the
-variables from an evaluation campaign (QUIZ_STRUCTURED, QUIZ_MAX_ATTEMPTS,
-LLM_TEMPERATURE and so on) would silently change what the tests exercise. A
-suite whose result depends on ambient shell state is not a suite, and a
-reviewer cloning the repository must get the same outcome as the author.
+config.py reads its settings from the environment when it is imported, so a
+shell still carrying the variables from an evaluation campaign would change
+what the tests exercise. The variables are cleared here, in the package that
+is imported before any test module and therefore before config.py is first
+imported by the code under test.
 
-The variables are cleared here rather than inside individual tests because
-this package is imported before any test module, and therefore before
-config.py is first imported by the code under test. Tests that want a
-non-default setting pass it explicitly as an argument instead.
+A test that wants a non-default setting passes it as an argument instead.
 """
 import os
 

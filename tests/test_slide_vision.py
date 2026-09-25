@@ -1,10 +1,7 @@
 """Tests for the vision-based slide extraction module.
 
-These use the injected FakeLLMClient and, where a file is unavoidable, a
-throwaway temp file whose bytes need not be a real image (encoding only
-base64s the bytes). No test makes a real model call, touches the network, or
-requires PyMuPDF: the one rendering test runs only when PyMuPDF is absent, to
-prove the graceful-degradation path.
+Part of the input modules and extractor comparison group. Every test uses a
+stand-in client, so none of them calls a real model.
 """
 import base64
 import os
@@ -16,6 +13,8 @@ from tests.fakes import FakeLLMClient
 
 
 class InstructionTests(unittest.TestCase):
+    """The instruction asks for the text and a description of the visuals."""
+
     def test_instruction_asks_for_verbatim_text_and_diagrams(self):
         text = slide_vision.VISION_INSTRUCTION.lower()
         self.assertIn("verbatim", text)
@@ -23,17 +22,23 @@ class InstructionTests(unittest.TestCase):
 
 
 class AvailabilityTests(unittest.TestCase):
+    """The availability check returns a boolean."""
+
     def test_is_available_is_boolean(self):
         self.assertIsInstance(slide_vision.is_available(), bool)
 
 
 class ExtractDispatchTests(unittest.TestCase):
+    """An unsupported file type is rejected before any optional import."""
+
     def test_unsupported_extension_rejected(self):
         with self.assertRaises(ValueError):
             slide_vision.extract_slides("lecture.txt", FakeLLMClient())
 
 
 class ExtractFromImagesTests(unittest.TestCase):
+    """One model call per image, joined with page markers."""
+
     def test_one_call_per_image_with_page_markers(self):
         client = FakeLLMClient(replies=["PAGE ONE TEXT", "PAGE TWO TEXT"])
         images = ["data:image/png;base64,AAA", "data:image/png;base64,BBB"]
@@ -50,6 +55,8 @@ class ExtractFromImagesTests(unittest.TestCase):
 
 
 class ExtractImageFileTests(unittest.TestCase):
+    """An image file is encoded as a data URL with the right type."""
+
     def test_image_file_is_encoded_and_sent(self):
         client = FakeLLMClient(replies=["SLIDE TEXT"])
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -78,6 +85,8 @@ class ExtractImageFileTests(unittest.TestCase):
 
 
 class RenderDegradationTests(unittest.TestCase):
+    """Without PyMuPDF, rendering raises an error carrying the install hint."""
+
     @unittest.skipIf(slide_vision.is_available(),
                      "PyMuPDF is installed, so the missing-dependency path "
                      "cannot be exercised")

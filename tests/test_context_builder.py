@@ -1,3 +1,8 @@
+"""Tests for building the labelled prompt context.
+
+Part of the context, prompts and provenance group.
+"""
+
 import unittest
 
 from core.context_builder import (NOTES_LABEL, SLIDES_LABEL,
@@ -6,6 +11,8 @@ from core.context_builder import (NOTES_LABEL, SLIDES_LABEL,
 
 
 class BuildContextTests(unittest.TestCase):
+    """Every supplied source is labelled and they appear in a fixed order."""
+
     def test_all_sources_labelled(self):
         context = build_context(transcript="t", slide_text="s", notes="n")
         for label in (TRANSCRIPT_LABEL, SLIDES_LABEL, NOTES_LABEL):
@@ -34,6 +41,12 @@ class BuildContextTests(unittest.TestCase):
 
 
 class BuildContextWithReportTests(unittest.TestCase):
+    """The word cap shortens only the sources that are over it.
+
+        Each source that lost content is reported, so nothing is cut quietly.
+
+    """
+
     def test_no_limit_is_byte_identical_and_reports_nothing(self):
         kwargs = dict(transcript="a b c", slide_text="d e", notes="f")
         context, events = build_context_with_report(**kwargs)
@@ -81,6 +94,8 @@ class BuildContextWithReportTests(unittest.TestCase):
 
 
 class ModeNameTests(unittest.TestCase):
+    """A combination of sources gives the mode name used in the results."""
+
     def test_four_canonical_modes(self):
         self.assertEqual(mode_name(transcript="t"), "Transcript only")
         self.assertEqual(mode_name(slide_text="s"), "Slide text only")

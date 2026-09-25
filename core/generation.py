@@ -1,9 +1,9 @@
-"""Prompt construction and the two sequential generation steps.
+"""Prompt text and the two generation calls.
 
-The prompt text is copied verbatim from the refined prototype evaluated in
-the Preliminary Project Report, so generation behaviour is unchanged. The
-second call deliberately depends on the output of the first: the quiz is
-generated from the source context plus the revision notes.
+The prompts are copied from the earlier prototype, so generation behaves the
+same way as the version that was evaluated. The second call depends on the
+first: the quiz is generated from the source context and the revision notes
+together.
 """
 
 REVISION_NOTES_PROMPT = """
@@ -62,29 +62,27 @@ def generate_quiz_questions(client, context, revision_notes):
 # ---------------------------------------------------------------------------
 # Structured quiz generation
 # ---------------------------------------------------------------------------
-# The prompt-and-check path above asks for four labelled lines and is checked
-# afterwards. Measured over twelve runs per condition it never produced a
-# fully valid quiz under greedy decoding, and the dominant fault was a single
-# omitted line ("Question type:") rather than a malformed or missing question.
-# That is a failure a prompt cannot reliably prevent, because nothing stops
-# the decoder skipping a line it was merely asked for.
+# The prompt-and-check path above asks for four labelled lines and checks the
+# reply afterwards. Across the recorded campaigns it passed 4 of 48 runs, none
+# of them under greedy decoding, and the most common fault was one missing
+# line ("Question type:") rather than a missing or malformed question. A
+# prompt on its own has no way to stop the decoder skipping a line it was only
+# asked for.
 #
-# The path below moves the requirement out of the prompt and into the
-# decoder. Each field is a required property of a JSON schema, so an omitted
-# field is not a response the model is able to emit. The result is rendered
-# back into the same four-line text the validator already parses, which keeps
-# quiz_validation, the saved output format and the interface unchanged, and
-# therefore keeps the two paths measurable by the same instrument.
+# The path below moves the requirement from the prompt into the decoder. Each
+# field is a required property of a JSON schema, so a missing field is not a
+# reply the model can produce. The result is rendered back into the same
+# four-line text, which leaves quiz_validation, the saved output format and
+# the interface unchanged and keeps both paths checked by the same code.
 
 import json
 
 from core.context_builder import (TRANSCRIPT_LABEL, SLIDES_LABEL, NOTES_LABEL)
 
 # The basis value offered for each source block, paired with the label the
-# context builder uses for it. The wording matters: quiz_validation checks
-# GENERATED_NOTES_TERMS ("revision notes", "generated notes") before it checks
-# the plain "notes" term, so "student notes" resolves to the student notes
-# input and is not mistaken for the system's own generated notes.
+# context builder uses for it. The wording matters. quiz_validation checks the
+# generated-notes terms before the plain "notes" term, so "student notes"
+# resolves to the student notes input rather than to the system's own notes.
 BASIS_CHOICES = (
     (TRANSCRIPT_LABEL, "transcript"),
     (SLIDES_LABEL, "slide text"),
@@ -95,17 +93,16 @@ QUESTION_TYPES = ("definition", "explanation", "comparison", "application")
 
 # Minimum lengths for the two free-text fields. A required property of type
 # "string" is satisfied by an empty string, and the model does take that
-# option: under sampling, two runs in the first structured campaign returned
-# five well-formed questions in which every suggested answer was "". Requiring
-# the field to exist is therefore not the same as requiring it to say
-# anything, and the length floor is what closes that gap.
+# option. An early structured run returned five well-formed questions in which
+# every suggested answer was empty. Requiring a field to exist is not the same
+# as requiring it to say anything, and the length floor closes that gap.
 MIN_QUESTION_CHARS = 10
 MIN_ANSWER_CHARS = 20
 
 # Kept separate from QUIZ_PROMPT rather than replacing it. quiz_validation
-# parses QUIZ_PROMPT at import time to learn the placeholder wording it checks
-# for, so editing that constant would silently change the validator, and the
-# legacy path has to stay runnable to provide the "before" measurement.
+# reads QUIZ_PROMPT at import time to learn the placeholder wording it looks
+# for, so editing that constant would change the validator as well, and the
+# original path has to stay runnable to provide the earlier measurement.
 QUIZ_SCHEMA_PROMPT = """
 You are helping create quiz questions for student revision.
 
@@ -127,10 +124,10 @@ Revision notes:
 def available_basis_choices(context):
     """Return the basis values a quiz may use for this run.
 
-    Derived from the source labels actually present in the assembled context,
-    so a run without student notes cannot offer "student notes" as an answer.
-    Narrowing the enum this way is what makes an attribution to the generated
-    revision notes unrepresentable rather than merely detectable afterwards.
+    Taken from the source labels present in the assembled context, so a run
+    without student notes does not offer "student notes" as a choice.
+    Narrowing the enum this way keeps an attribution to the generated revision
+    notes out of the reply rather than catching it afterwards.
     """
     return [value for label, value in BASIS_CHOICES if label in context]
 
@@ -178,9 +175,8 @@ def build_quiz_schema(basis_choices, count=5):
 def render_quiz_text(payload):
     """Render a structured quiz into the four-labelled-line text form.
 
-    Deliberately the same shape quiz_validation already parses, so the
-    validator is not modified and the before-and-after comparison is measured
-    by one unchanged instrument.
+    The same shape quiz_validation already parses, so the validator is left
+    alone and both paths are checked by the same code.
     """
     lines = []
     for item in payload.get("questions", []):
@@ -198,9 +194,9 @@ def render_quiz_text(payload):
 def generate_quiz_structured(client, context, revision_notes, count=5):
     """Generate one quiz under a JSON schema and render it to the text form.
 
-    A response that is not valid JSON returns an empty string rather than
-    raising, so one bad response is scored as a failed run by the validator
-    instead of ending a twelve-run campaign part way through.
+    A reply that is not valid JSON returns an empty string rather than raising,
+    so one bad reply is scored as a failed run instead of stopping a campaign
+    part way through.
     """
     choices = available_basis_choices(context)
     schema = build_quiz_schema(choices, count=count)

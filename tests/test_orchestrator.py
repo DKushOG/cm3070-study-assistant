@@ -1,3 +1,9 @@
+"""Tests for the pipeline controller.
+
+Part of the full pipeline integration group. A stand-in client stands in for
+the model, so these run the whole pipeline without Ollama.
+"""
+
 import os
 import tempfile
 import unittest
@@ -13,6 +19,8 @@ def read(path):
 
 
 class RunPipelineTests(unittest.TestCase):
+    """One run fills every result field, and the quiz follows the notes."""
+
     def test_result_fields_populated(self):
         client = FakeLLMClient(replies=["NOTES OUT", "QUIZ OUT"])
         result = run_pipeline(client, transcript="t", slide_text="s")
@@ -27,9 +35,8 @@ class RunPipelineTests(unittest.TestCase):
             result.notes_seconds + result.quiz_seconds)
 
     def test_quiz_call_depends_on_generated_notes(self):
-        """The second model call must receive the notes produced by the
-        first call. This is the sequential orchestration shown in Figure
-        3.2 of the report."""
+        """The second model call receives the notes the first call produced,
+        which is the dependency the whole pipeline is built around."""
         client = FakeLLMClient(replies=["GENERATED NOTES XYZ", "QUIZ"])
         run_pipeline(client, transcript="t")
         self.assertEqual(len(client.prompts), 2)
@@ -42,6 +49,8 @@ class RunPipelineTests(unittest.TestCase):
 
 
 class SaveResultTests(unittest.TestCase):
+    """Each run is written to its own file, even when saved quickly."""
+
     def test_writes_output_file(self):
         client = FakeLLMClient(replies=["N", "Q"])
         result = run_pipeline(client, notes="some notes")
@@ -68,6 +77,8 @@ class SaveResultTests(unittest.TestCase):
 
 
 class ResultMetadataTests(unittest.TestCase):
+    """Run settings are read from the client, or left as None without one."""
+
     def test_settings_captured_from_client(self):
         client = FakeLLMClient(replies=["N", "Q"], model="m", base_url="u",
                                temperature=0, seed=7)
@@ -85,6 +96,8 @@ class ResultMetadataTests(unittest.TestCase):
 
 
 class SaveResultHeaderTests(unittest.TestCase):
+    """The header records the settings, any truncation and the quiz path."""
+
     def test_header_records_settings_and_truncation(self):
         client = FakeLLMClient(replies=["N", "Q"], model="m", base_url="u",
                                temperature=0, seed=7)
@@ -130,6 +143,8 @@ BAD_QUIZ = "Question: Only one?\nSuggested answer: A.\n" \
 
 
 class QuizValidationRecordingTests(unittest.TestCase):
+    """Validation is recorded on every run, and the default makes two calls."""
+
     def test_validation_recorded_on_default_settings(self):
         """Validation runs even with retry disabled, so the failure rate is
         measured on the default configuration."""
@@ -140,8 +155,8 @@ class QuizValidationRecordingTests(unittest.TestCase):
         self.assertEqual(result.quiz_validation.questions_found, 1)
 
     def test_default_makes_exactly_two_model_calls(self):
-        """The default path must be byte-identical to the behaviour before
-        validation existed: one notes call, one quiz call, no retry."""
+        """The default path makes the same calls it made before validation
+        existed: one notes call, one quiz call and no retry."""
         client = FakeLLMClient(replies=["NOTES", BAD_QUIZ])
         run_pipeline(client, transcript="t")
         self.assertEqual(len(client.prompts), 2)
@@ -154,6 +169,8 @@ class QuizValidationRecordingTests(unittest.TestCase):
 
 
 class QuizRetryTests(unittest.TestCase):
+    """A failing quiz is regenerated with the same prompt, last try kept."""
+
     def test_retry_regenerates_until_valid(self):
         client = FakeLLMClient(replies=["NOTES", BAD_QUIZ, GOOD_QUIZ])
         result = run_pipeline(client, transcript="t", quiz_max_attempts=3)
@@ -183,9 +200,12 @@ class QuizRetryTests(unittest.TestCase):
 
 
 class RetrySeedTests(unittest.TestCase):
-    """Retry regenerates with the identical prompt, so with a fixed seed and
-    temperature 0 every attempt reproduced the same failure and the extra
-    calls were wasted. Varying only the seed makes retry a real mechanism."""
+    """Each attempt gets its own seed, by a fixed rule.
+
+        The prompt stays the same between attempts and the injected client is
+        not modified, so a retry sequence can be repeated.
+
+    """
 
     def test_seed_rule_is_deterministic_and_keeps_attempt_one(self):
         self.assertEqual(seed_for_attempt(42, 1), 42)
@@ -248,8 +268,12 @@ class RetrySeedTests(unittest.TestCase):
 
 
 class RetryDeterminismNoteTests(unittest.TestCase):
-    """Greedy decoding with no seed cannot be varied, so the run says so
-    rather than silently burning attempts."""
+    """A retry that is unlikely to help is reported.
+
+        At temperature 0 the seed is not expected to change the output, so the
+        run says so instead of spending the attempts without comment.
+
+    """
 
     def test_note_set_when_temperature_zero_and_no_seed(self):
         client = FakeLLMClient(replies=["NOTES", BAD_QUIZ], temperature=0)
@@ -260,10 +284,9 @@ class RetryDeterminismNoteTests(unittest.TestCase):
         self.assertEqual(result.quiz_attempts, 3)
 
     def test_note_still_fires_when_a_seed_is_set_at_temperature_zero(self):
-        """Regression: an earlier version returned as soon as a seed was
-        present, so setting a seed silenced the warning without removing the
-        futility. Temperature 0 is greedy decoding, so the seed has no effect
-        and the attempts are still identical."""
+        """An earlier version returned as soon as a seed was present, so
+        setting a seed switched the warning off without making the retries any
+        more useful. The temperature is checked first for that reason."""
         client = FakeLLMClient(replies=["NOTES", BAD_QUIZ], temperature=0,
                                seed=42)
         result = run_pipeline(client, transcript="t", quiz_max_attempts=3)
@@ -272,13 +295,13 @@ class RetryDeterminismNoteTests(unittest.TestCase):
         self.assertIn("temperature is 0", result.quiz_retry_note)
         self.assertIn("greedy", result.quiz_retry_note)
         self.assertIn("LLM_TEMPERATURE above 0", result.quiz_retry_note)
-        # The seeds are still varied and recorded; they simply cannot help
-        # at this temperature.
+        # The seeds are still varied and recorded. They are just not expected
+        # to help at this temperature.
         self.assertEqual(result.quiz_seeds, [42, 43, 44])
 
     def test_no_note_when_sampling_can_actually_vary(self):
-        """Above 0 the decoding samples, so a varied seed changes the output
-        and retry is a real mechanism. Nothing to warn about."""
+        """Above 0 the decoding samples, so a different seed can change the
+        output and retry is a real mechanism. Nothing to warn about."""
         client = FakeLLMClient(replies=["NOTES", BAD_QUIZ], temperature=0.7,
                                seed=42)
         result = run_pipeline(client, transcript="t", quiz_max_attempts=3)
@@ -304,6 +327,8 @@ class RetryDeterminismNoteTests(unittest.TestCase):
 
 
 class SlideSourceTests(unittest.TestCase):
+    """The extractor and Whisper size reach the result and the saved header."""
+
     def test_slide_source_recorded_on_result_and_in_header(self):
         client = FakeLLMClient(replies=["N", GOOD_QUIZ])
         result = run_pipeline(client, slide_text="s",

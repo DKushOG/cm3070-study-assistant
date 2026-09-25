@@ -1,25 +1,24 @@
-"""Batch evaluation runner.
+"""Run the pipeline over every input mode and write a scoring sheet.
 
-Runs the pipeline over the available input modes using the sample files,
-saves every output, and writes a CSV scoring sheet with one row per run.
-Timing columns are filled automatically and rubric columns are left blank
-for human scoring, which mirrors the Preliminary Project Report method and
-scales to more topics by pointing --samples at a different folder.
+Uses the sample files, saves every output and writes a CSV with one row per
+run. The timing columns are filled in automatically and the scoring columns
+are left blank for marking by hand. Pointing --samples at a different folder
+runs the same evaluation on another topic.
 
 --repeats runs each mode more than once and adds a run column, so a mode can
-be reported as a mean rather than a single sample: with one run per mode a
-difference between modes cannot be separated from run-to-run sampling noise.
---temperature and --seed pass the reproducibility controls through to the
-client, and the model, temperature, seed and slide source are written into
-the CSV so a results file is self-describing months later.
+be reported as a mean. With a single run per mode, a difference between modes
+cannot be separated from run-to-run sampling noise. --temperature and --seed
+pass the sampling controls through to the client, and the model, temperature,
+seed and slide source are written into the CSV, so a results file still
+explains itself months later.
 
 The quiz validation columns (questions_found, returned_five, attempts,
-validation_passed) replace the "Returned five questions" column that was
-previously filled by hand, turning a manual observation into a measurement.
+validation_passed) replace a column that used to be filled in by hand, which
+turns an observation into a measurement.
 
-Modes whose source files are missing are skipped with a warning rather
-than crashing, so the runner still works while a topic folder is being
-assembled. The client can be injected for testing.
+A mode whose source files are missing is skipped with a warning rather than
+crashing, so the runner still works while a topic folder is being put
+together. The client can be injected for testing.
 
 Usage:
     python -m evaluation.run_eval --samples samples --out outputs --repeats 3

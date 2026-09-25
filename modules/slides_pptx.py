@@ -1,33 +1,24 @@
-"""PowerPoint slide extraction module.
+"""Read PowerPoint files, as text and as rendered pages.
 
-pptx is the dominant slide format, so refusing it contradicted the promise in
-Table 3.1 of the Design chapter to accept mixed lecture materials and the
-Chapter 1.3 commitment to common learning material formats. A student should
-be able to feed in the deck they already have, unmodified; requiring a manual
-PDF export first would undermine the premise of the project. This module
-removes that friction.
+Most lecture slides arrive as pptx, so the system accepts the deck the student
+already has rather than asking for a PDF export first.
 
-Two deliberately separate capabilities, because one is cheap and one is not:
+The module has two separate jobs, because one is cheap and one is not.
 
-1. Text extraction through python-pptx: pure pip, no system dependency, and it
-   reads the slide's own structure. python-pptx is a parser, in the same
-   category as pypdf - it reads the file format directly and does no
-   inference. Its advantage over OCR is that slide boundaries, titles and
-   table cells survive, where OCR flattens a rendered page into loose lines.
+1. Text extraction through python-pptx. It installs with pip alone and reads
+   the file format directly, in the same way pypdf reads a PDF. Slide
+   boundaries, titles and table cells survive, where OCR flattens a rendered
+   page into loose lines.
 
-2. Rendering to pixels for the OCR and vision paths, which needs LibreOffice,
-   because nothing in pure Python renders PowerPoint faithfully. This is
-   optional: when LibreOffice is absent the text path still works and the
-   interface says what is missing, so a missing heavy dependency degrades to a
-   clear message rather than a crash, following modules/audio_stt.py.
+2. Rendering pages to images for the OCR and vision paths, which needs
+   LibreOffice, since no pure Python library renders PowerPoint faithfully.
+   This part is optional. Without LibreOffice the text path still works and the
+   interface says what is missing, the same pattern as modules/audio_stt.py.
 
-Speaker notes are extracted only when explicitly requested and are off by
-default. This is a fairness requirement, not a feature preference: speaker
-notes are content no other extraction path can see, so including them by
-default would confound the four-way comparison in section 5.2 - the native
-path would appear to win purely by having access to material the OCR and
-vision paths never receive. It is the same argument as rendering each page
-once and sharing the images in evaluation/compare_extractors.py.
+Speaker notes are read only when asked for and are off by default. No other
+extraction path can see them, so including them would make the four-way
+comparison unfair. It is the same reason each page is rendered once and shared
+in evaluation/compare_extractors.py.
 """
 import os
 import shutil
@@ -40,22 +31,22 @@ from modules.slide_vision import PAGE_MARKER
 PPTX_SUFFIX = ".pptx"
 
 # The default Windows install location, checked as well as PATH because the
-# LibreOffice installer does not add itself to PATH on Windows.
+# LibreOffice installer does not add itself to PATH there.
 WINDOWS_SOFFICE = r"C:\Program Files\LibreOffice\program\soffice.exe"
 
-# Seconds to allow for a headless conversion before giving up, so a stalled
-# LibreOffice cannot hang the interface indefinitely.
+# Seconds to allow for one conversion before giving up, so a stalled
+# LibreOffice does not hang the interface.
 CONVERT_TIMEOUT = 180
 
 NOTES_MARKER = "[Speaker notes]"
 
 
 def is_available():
-    """Return whether pptx text extraction is possible (python-pptx installed).
+    """Return whether pptx text extraction is possible, meaning python-pptx
+    is installed.
 
-    Text extraction is the capability this reports. Rendering for the OCR and
-    vision paths is reported separately by libreoffice_available, because the
-    two have different dependencies and only one of them is pure pip.
+    Rendering for the OCR and vision paths is reported separately by
+    libreoffice_available, since the two have different dependencies.
     """
     try:
         import pptx  # noqa: F401  (python-pptx)
@@ -86,9 +77,8 @@ def libreoffice_available():
 def _shape_text(shape):
     """Return the text of one shape, including table cells.
 
-    Tables are read cell by cell and joined with tabs so the row structure
-    survives in the extracted text, which is the structural advantage this
-    path has over OCR.
+    Tables are read cell by cell and joined with tabs, so the rows survive in
+    the extracted text. That structure is what this path keeps and OCR loses.
     """
     parts = []
     if getattr(shape, "has_table", False):
@@ -123,18 +113,18 @@ def _notes_text(slide):
 
 
 def extract_pptx_text(path, include_notes=False):
-    """Extract slide text from a pptx file, preserving slide boundaries.
+    """Extract slide text from a pptx file, keeping the slide boundaries.
 
-    Uses the same page marker as modules/slide_vision.py so outputs from
-    different extraction paths line up directly in the section 5.2 comparison
-    table. The slide title is emitted first when present, then the remaining
-    shape and table text in document order.
+    Uses the same page marker as modules/slide_vision.py, so output from the
+    different extraction paths lines up when they are compared. The slide title
+    comes first where there is one, then the remaining shape and table text in
+    document order.
 
-    include_notes is off by default on purpose: see the module docstring. When
-    switched on, notes are appended under a clearly labelled marker so they are
-    never mistaken for text that was visible on the slide.
+    include_notes is off by default, for the reason in the module docstring.
+    When it is on, the notes are added under a labelled marker so they are not
+    mistaken for text that was visible on the slide.
 
-    Raises RuntimeError with an installation hint if python-pptx is missing.
+    Raises RuntimeError with an install hint when python-pptx is missing.
     """
     try:
         from pptx import Presentation
@@ -152,7 +142,7 @@ def extract_pptx_text(path, include_notes=False):
             lines.append(title)
         for shape in slide.shapes:
             for text in _shape_text(shape):
-                # The title placeholder is also a shape; do not repeat it.
+                # The title placeholder is a shape too, so skip it here.
                 if text != title:
                     lines.append(text)
         if include_notes:
@@ -165,13 +155,12 @@ def extract_pptx_text(path, include_notes=False):
 
 
 def convert_to_pdf(path, output_dir):
-    """Convert a pptx to PDF headlessly with LibreOffice and return the path.
+    """Convert a pptx to PDF with LibreOffice and return the new path.
 
-    Converting to PDF means the existing PDF rendering path is reused
-    unchanged, so the OCR and vision paths need no knowledge of PowerPoint at
-    all. Raises RuntimeError with a clear message when LibreOffice is absent or
-    the conversion fails, which is what lets the interface explain the missing
-    dependency instead of crashing.
+    Converting first means the existing PDF rendering path is reused, so the
+    OCR and vision paths need to know nothing about PowerPoint. Raises
+    RuntimeError with a clear message when LibreOffice is missing or the
+    conversion fails, which is what the interface shows the user.
     """
     soffice = find_soffice()
     if soffice is None:
@@ -204,8 +193,8 @@ def convert_to_pdf(path, output_dir):
 def render_pptx_to_images(path, dpi=None, max_pages=None):
     """Render pptx slides to images by converting to PDF first.
 
-    The temporary PDF is discarded once the pages are rendered; only the images
-    are returned, so the caller is unaware a conversion happened.
+    The temporary PDF is deleted once the pages are rendered and only the
+    images are returned, so the caller does not see the conversion.
     """
     from modules import slide_vision
     kwargs = {}

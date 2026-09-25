@@ -1,8 +1,6 @@
-"""Tests for slide text provenance.
+"""Tests for the source label shown with extracted text.
 
-A caption that credits an extractor for text it did not produce would break
-the transparency principle the Design chapter sets out, so these cover the
-edit, clear and manual-paste cases explicitly.
+Part of the context, prompts and provenance group.
 """
 import unittest
 
@@ -13,6 +11,8 @@ SOURCE = "Vision model (qwen3-vl:4b)"
 
 
 class DescribeSlideProvenanceTests(unittest.TestCase):
+    """The extractor is credited, and an edit after extraction is disclosed."""
+
     def test_unedited_extraction_is_credited_plainly(self):
         self.assertEqual(
             describe_slide_provenance("extracted text", SOURCE,
@@ -43,8 +43,12 @@ class DescribeSlideProvenanceTests(unittest.TestCase):
 
 
 class TranscriptProvenanceTests(unittest.TestCase):
-    """The Whisper size label must not go stale, or a transcript would be
-    attributed to the wrong model in the word error rate comparison."""
+    """The Whisper size label follows the text it came from.
+
+        A label left behind from an earlier size would credit a transcript to
+        the wrong model in the word error rate comparison.
+
+    """
 
     def test_names_the_whisper_size(self):
         self.assertEqual(

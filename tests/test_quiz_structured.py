@@ -1,12 +1,6 @@
-"""Tests for the schema-constrained quiz generation path.
+"""Tests for the schema-constrained quiz path.
 
-These cover the three claims the evaluation depends on. That the enum offered
-to the model is narrowed to the sources actually supplied, so an attribution
-to the system's own generated notes cannot be expressed. That the rendered
-output is the same four-line text the existing validator parses, so the two
-generation paths are measured by one unchanged instrument. And that the
-validator has not been weakened, which is the thing a reader would most
-reasonably suspect when a fault rate drops to zero.
+Part of the structured quiz schema group.
 """
 import json
 import unittest
@@ -33,6 +27,13 @@ def quiz_payload(basis="transcript", count=5, question_type="definition"):
 
 
 class BasisChoicesTest(unittest.TestCase):
+    """Only the sources this run supplied are offered as a basis.
+
+        The enum, the length floors and the question count all come from the
+        schema, so a reply that breaks them is not one the model can produce.
+
+    """
+
     def test_only_supplied_sources_are_offered(self):
         context = build_context(transcript="spoken words",
                                 slide_text="slide words")
@@ -79,6 +80,8 @@ class BasisChoicesTest(unittest.TestCase):
 
 
 class RenderedOutputTest(unittest.TestCase):
+    """A structured reply renders into the text form the validator parses."""
+
     def test_rendered_quiz_passes_the_existing_validator(self):
         text = render_quiz_text(quiz_payload())
         result = validate_quiz(text)
@@ -106,6 +109,13 @@ class RenderedOutputTest(unittest.TestCase):
 
 
 class GenerationPathTest(unittest.TestCase):
+    """The schema reaches the model and a bad reply is handled.
+
+        Malformed JSON returns an empty string rather than raising, so one bad
+        reply is scored as a failed run instead of stopping a campaign.
+
+    """
+
     def test_structured_call_attaches_a_json_schema(self):
         client = FakeLLMClient(replies=[json.dumps(quiz_payload())])
         context = build_context(transcript="spoken words")

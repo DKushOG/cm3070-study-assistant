@@ -1,9 +1,11 @@
-"""Slide and PDF text extraction module (Phase B extension point).
+"""Read slide text without a model, using the classical tools.
 
-Two paths: digital PDFs use the embedded text layer through pypdf, and
-slide images use Tesseract OCR through pytesseract. Both degrade
-gracefully so the app runs without them and the user can paste slide text
-manually.
+Two paths. A digital PDF is read through pypdf, which returns the text layer
+the file already carries. A slide image is read with Tesseract through
+pytesseract.
+
+Either package can be missing. The availability checks let the app hide the
+method instead of failing, and the user can paste slide text by hand.
 """
 from pathlib import Path
 
@@ -54,8 +56,11 @@ def ocr_image(path):
 
 
 def extract_slides(path):
-    """Dispatch extraction by file type. Suffix checks happen before any
-    optional import so unsupported types fail fast with a clear message."""
+    """Choose the path by file type.
+
+    The suffix is checked before any optional import, so an unsupported type
+    fails straight away with a clear message.
+    """
     suffix = Path(str(path)).suffix.lower()
     if suffix == ".pdf":
         return extract_pdf_text(path)

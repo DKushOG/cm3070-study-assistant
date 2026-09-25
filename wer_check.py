@@ -12,8 +12,8 @@ REFERENCE = BASE + r"\Lecture transcript.txt"
 
 
 def normalise(text):
-    """Lower case, drop punctuation, collapse whitespace, so the three sizes
-    are scored the same way as the base figure already in the report."""
+    """Lower case, drop punctuation and collapse whitespace, so the three
+    sizes are scored the same way as the figure already recorded."""
     text = text.lower().replace("'", "").replace("\u2019", "")
     text = re.sub(r"[^a-z0-9\s]", " ", text)
     return re.sub(r"\s+", " ", text).strip().split()

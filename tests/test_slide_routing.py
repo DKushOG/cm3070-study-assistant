@@ -1,12 +1,12 @@
 """Tests for the per-slide extraction routing rule.
 
-The rule decides, before any model call is made, whether a slide is worth
-sending to the vision model. These tests fix the decision boundaries and the
-asymmetry the rule is built on, so neither can be changed by accident later
-without a test saying so.
+Part of the per-slide routing group. The rule decides, before any model call,
+whether a slide is worth sending to the vision model. These tests fix the
+decision boundaries and the bias the rule is built on, so neither changes by
+accident.
 
-No test here makes a model call or reads a real deck. The picture-reading
-tests build a small deck of their own in a temporary folder.
+No test here calls a model or reads a real deck. The picture-reading tests
+build a small deck of their own in a temporary folder.
 """
 import os
 import struct
@@ -18,13 +18,13 @@ from modules import slide_routing
 
 
 class ThresholdTests(unittest.TestCase):
-    """The shipped thresholds must match the ones that were measured.
+    """The thresholds in the code match the ones that were measured.
 
-    Written because a threshold is a number in a file, and a number in a file
-    drifts. The values below are the ones derived from the instrumented
-    corpus (81 PowerPoint slides for picture area, 111 slides for text
-    yield), and a change to either should be a deliberate act with new
-    evidence behind it rather than a tidy-up.
+        Written because a threshold is a number in a file, and a number in a
+        file drifts. These values came from the instrumented corpus, 81
+        PowerPoint slides for picture area and 111 slides for text yield, so
+        changing either should take new evidence rather than a tidy-up.
+
     """
 
     def test_picture_area_threshold_is_the_measured_one(self):
@@ -35,6 +35,8 @@ class ThresholdTests(unittest.TestCase):
 
 
 class PictureAreaRuleTests(unittest.TestCase):
+    """A picture-heavy slide goes to the model and a text slide does not."""
+
     def test_a_picture_heavy_slide_goes_to_the_vision_model(self):
         route, reason = slide_routing.decide(picture_area_ratio=0.74)
         self.assertEqual(route, slide_routing.ROUTE_VISION)
@@ -64,6 +66,8 @@ class PictureAreaRuleTests(unittest.TestCase):
 
 
 class TextYieldFallbackTests(unittest.TestCase):
+    """For a PDF page, the word count of the text layer decides."""
+
     def test_a_sparse_pdf_page_goes_to_the_vision_model(self):
         route, reason = slide_routing.decide(text_layer_words=12)
         self.assertEqual(route, slide_routing.ROUTE_VISION)
@@ -83,6 +87,8 @@ class TextYieldFallbackTests(unittest.TestCase):
 
 
 class NoFeaturesTests(unittest.TestCase):
+    """With nothing to go on, the slide is sent to the model."""
+
     def test_with_nothing_to_go_on_the_slide_is_sent(self):
         """Defaulting to vision is the deliberate choice, not an oversight.
 
@@ -96,6 +102,8 @@ class NoFeaturesTests(unittest.TestCase):
 
 
 class CustomThresholdTests(unittest.TestCase):
+    """Both thresholds can be overridden, which is what an ablation needs."""
+
     def test_thresholds_can_be_overridden_for_an_ablation(self):
         route, _reason = slide_routing.decide(picture_area_ratio=0.30,
                                               picture_threshold=0.50)
@@ -103,6 +111,8 @@ class CustomThresholdTests(unittest.TestCase):
 
 
 class PictureAreaReadingTests(unittest.TestCase):
+    """A file that is not a readable pptx gives no ratios and no error."""
+
     def test_a_non_pptx_yields_no_ratios(self):
         # Which is what makes a PDF fall back to text yield rather than
         # silently routing everything one way.
@@ -135,12 +145,11 @@ except ImportError:
 
 @unittest.skipUnless(HAVE_PPTX, "python-pptx is not installed")
 class PlaceholderPictureTests(unittest.TestCase):
-    """A picture counts however it was put on the slide.
+    """A picture counts however it was placed on the slide.
 
-    Written after a real lecture slide was scored as having no pictures. Its
-    picture had been dropped into a content placeholder, which PowerPoint
-    stores as a placeholder rather than a picture shape, so a check on shape
-    type alone missed a picture covering 47 per cent of the slide.
+        Written after a real lecture slide was scored as having no pictures.
+        Its picture sat in a content placeholder, which the shape type misses.
+
     """
 
     def setUp(self):
@@ -202,6 +211,8 @@ class PlaceholderPictureTests(unittest.TestCase):
 
 
 class SummaryTests(unittest.TestCase):
+    """A routed run describes what it avoided, and an empty report does not."""
+
     def test_a_routed_run_describes_what_it_avoided(self):
         summary = slide_routing.summarise(
             {"pages": 100, "vision_pages": 57})

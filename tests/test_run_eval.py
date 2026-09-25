@@ -1,3 +1,8 @@
+"""Tests for the batch evaluation runner.
+
+Part of the full pipeline integration group.
+"""
+
 import csv
 import io
 import os
@@ -17,8 +22,12 @@ def write(path, text):
 
 
 class RunEvalTests(unittest.TestCase):
-    """End-to-end tests of the batch runner with an injected fake client,
-    covering the full path from sample files to saved outputs and CSV."""
+    """The whole batch, from sample files to a written CSV.
+
+        A mode whose sources are missing is skipped with a warning rather than
+        ending the run.
+
+    """
 
     def run_main(self, samples, out, client):
         buffer = io.StringIO()
@@ -83,8 +92,11 @@ class RunEvalTests(unittest.TestCase):
 
 
 class RepeatsAndColumnsTests(unittest.TestCase):
-    """Cover the extensions that let a mode be reported as a mean and make a
-    results file self-describing."""
+    """Repeats and the columns that make a results file self-describing.
+
+        The scoring columns stay blank, since they are filled in by hand.
+
+    """
 
     def run_main(self, argv, client):
         buffer = io.StringIO()
@@ -192,6 +204,8 @@ class RepeatsAndColumnsTests(unittest.TestCase):
 
 
 class BuildModesTests(unittest.TestCase):
+    """Which modes are built from the sample files that exist."""
+
     def test_all_sources_gives_four_modes(self):
         runnable, skipped = run_eval.build_modes("t", "s", "n")
         self.assertEqual(len(runnable), 4)

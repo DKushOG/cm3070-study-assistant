@@ -1,0 +1,13 @@
+mode,run,notes_seconds,quiz_seconds,total_seconds,model,temperature,seed,slide_source,questions_found,returned_five,attempts,validation_passed,output_file,accuracy,coverage,structure,quiz_relevance,answerability,usefulness,invalid_source_basis,generated_notes_basis,shape_warnings,quiz_seeds,quiz_structured
+Transcript only,1,5.65,4.85,10.50,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202441_837578_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,1,3.33,5.61,8.94,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202450_777835_slide_text_only.txt,,,,,,,0,0,1,,True
+Combined transcript and slide text,1,2.38,5.91,8.29,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202459_070804_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",1,2.30,5.32,7.62,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202506_693642_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,2,2.22,6.15,8.37,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202515_068502_transcript_only.txt,,,,,,,0,0,1,,True
+Slide text only,2,3.14,6.67,9.81,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202524_883935_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,2,3.21,4.45,7.66,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202532_542228_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",2,2.71,3.37,6.07,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202538_623363_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True
+Transcript only,3,1.53,4.01,5.55,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202544_175063_transcript_only.txt,,,,,,,0,0,0,,True
+Slide text only,3,3.12,4.29,7.41,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202551_589774_slide_text_only.txt,,,,,,,0,0,0,,True
+Combined transcript and slide text,3,3.23,4.08,7.32,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202558_907128_combined_transcript_and_slide_text.txt,,,,,,,0,0,0,,True
+"Transcript, slide text and notes",3,2.64,4.05,6.69,llama3.2-ctx16k,0.7,,Vision model,5,True,1,True,outputs\bayes_v2_t07\20260922_202605_605196_transcript_slide_text_and_notes.txt,,,,,,,0,0,0,,True

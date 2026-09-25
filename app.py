@@ -1,12 +1,9 @@
-"""Multimodal AI Study Assistant.
+"""Multimodal AI Study Assistant, Streamlit interface.
 
-Streamlit interface over the orchestration pipeline. Audio and slide
-uploads appear only when the matching module is installed, and every
-source can always be pasted manually, so the app runs at every stage of
-development. Intermediate outputs stay visible so the user can inspect the
-transcript, extracted slide text and combined context before trusting the
-generated notes, which is the transparency requirement from the Design
-chapter.
+Uploads appear only when the matching module is installed, and every source can
+be pasted by hand instead, so the app runs at any stage of setup. Intermediate
+outputs stay on screen so the user can check the transcript, the slide text and
+the combined context before trusting the generated notes.
 
 Run with:
     streamlit run app.py
@@ -45,9 +42,8 @@ with st.sidebar:
         "Provide any combination of sources. The input mode is derived "
         "from what you supply."
     )
-    # Selecting the Whisper size here rather than in .env lets the same audio
-    # be run through tiny, base and small without restarting, which is what
-    # the word error rate comparison in the Evaluation chapter needs.
+    # Chosen here rather than in .env, so the same audio can be run through
+    # tiny, base and small without restarting the app.
     whisper_sizes = audio_stt.WHISPER_MODEL_SIZES
     default_index = (whisper_sizes.index(config.WHISPER_MODEL)
                      if config.WHISPER_MODEL in whisper_sizes else 0)
@@ -56,10 +52,8 @@ with st.sidebar:
         help="Defaults to WHISPER_MODEL from .env. Larger sizes are more "
              "accurate and slower.")
 
-    # The quiz is generated under a JSON schema by default, which enforces
-    # the five-question format and limits each source basis to a source that
-    # was actually supplied. The legacy prompt-only path stays selectable so
-    # the difference can be shown, and the choice is recorded in every run.
+    # The structured quiz is the default. The older prompt-only path stays
+    # selectable so the two can be compared, and the choice is saved.
     quiz_structured = st.checkbox(
         "Structured quiz (format enforced during decoding)",
         value=config.QUIZ_STRUCTURED_IN_APP,
@@ -80,9 +74,8 @@ left, middle, right = st.columns(3)
 with left:
     st.subheader("Lecture audio")
     if audio_stt.is_available():
-        # Video containers are accepted because a lecture recording usually
-        # arrives as one; Whisper decodes them through ffmpeg, so no
-        # conversion step is required of the student.
+        # Video files are accepted so students can upload lecture recordings
+        # directly. Whisper uses ffmpeg to read their audio.
         audio_file = st.file_uploader(
             "Audio or video recording",
             type=audio_stt.ACCEPTED_AUDIO_FORMATS)
@@ -95,8 +88,8 @@ with left:
                 try:
                     transcribed = audio_stt.transcribe(
                         tmp_path, model_size=whisper_size)
-                    # Remember what this size produced, so the label cannot go
-                    # stale if the transcript is edited afterwards.
+                    # Store the Whisper size used for this transcript so it can
+                    # be shown correctly later.
                     st.session_state["transcript"] = transcribed
                     st.session_state["transcript_at_extraction"] = transcribed
                     st.session_state["transcript_model"] = whisper_size
@@ -121,13 +114,9 @@ with left:
 
 with middle:
     st.subheader("Slides, PowerPoint or PDF")
-    # Each available extraction method is offered as a choice, and which
-    # methods exist depends on the uploaded file type. Per-slide routing is
-    # listed first and selected by default, because it is the configuration
-    # the Evaluation chapter measured. The logic lives in
-    # modules/slide_extraction.py so it is tested without Streamlit. Which
-    # method produced the current text is shown below for the traceability
-    # required by the Design chapter.
+    # Which methods are offered depends on the uploaded file type. Per-slide
+    # routing is listed first and selected by default. The selection logic is
+    # kept in modules/slide_extraction.py so it can be tested on its own.
     if (slides_ocr.pdf_available() or slides_ocr.ocr_available()
             or slide_vision.is_available() or slides_pptx.is_available()):
         slide_file = st.file_uploader(
@@ -171,20 +160,16 @@ with middle:
                     vision_client = None
                     if slide_extraction.needs_vision_model(chosen_path):
                         vision_client = LLMClient(model=config.VISION_MODEL)
-                        # Pre-flight before rendering pages and calling the
-                        # model, so an unpulled model is reported up front
-                        # rather than part way through a deck.
+                        # Check the model is installed before any page is
+                        # rendered, so a missing model is reported up front.
                         reachable, message = vision_client.check_model_available()
                         if not reachable:
                             raise RuntimeError(message)
                     extracted, notice = slide_extraction.extract(
                         tmp_path, chosen_path, vision_client=vision_client)
-                    # Kept in session state so the routing summary and any
-                    # unreadable slides stay on screen after the page reruns.
+                    # Kept in session state so it survives a page rerun.
                     st.session_state["slide_notice"] = notice
-                    # Remember the exact text produced, so a later hand edit
-                    # can be detected and disclosed rather than silently
-                    # credited to the extractor.
+                    # Remember the extracted text, so a later edit shows up.
                     st.session_state["slide_text"] = extracted
                     st.session_state["slide_text_at_extraction"] = extracted
                     st.session_state["slide_source"] = chosen_path
@@ -268,9 +253,8 @@ if st.button("Generate revision notes and quiz", type="primary"):
                 st.markdown(result.notes)
             with quiz_col:
                 st.subheader("Quiz questions")
-                # The validation verdict is shown, not hidden: the two format
-                # failures documented in the report are the ones being
-                # measured, so the user sees when one has occurred.
+                # Show the validation verdict rather than hide it, because the
+                # format failures are what the evaluation measures.
                 validation = result.quiz_validation
                 quiz_mode = ("structured, format enforced during decoding"
                              if result.quiz_structured

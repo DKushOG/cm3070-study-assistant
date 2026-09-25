@@ -1,30 +1,15 @@
-"""Speech-to-text module (Phase A extension point).
+"""Speech to text with Whisper.
 
-Wraps openai-whisper behind a small interface with graceful degradation:
-if the package or ffmpeg is missing, the app still runs and the user can
-paste a transcript manually. That keeps the system demonstrable at every
-stage of development, which matches the staged plan in the Design chapter.
-
-Accepted formats are listed here rather than inline in the interface, so the
-supported set is stated in one place and is testable. The list is wide because
-Whisper hands decoding to ffmpeg, which reads every one of these containers:
-the earlier mp3/wav/m4a-only restriction was an interface limitation, not a
-model limitation, and it rejected mp4 — the dominant lecture recording
-container. Table 3.1 of the Design chapter promises to accept mixed lecture
-materials and Chapter 1.3 promises common learning material formats, so
-requiring a student to convert a recording before use was a defect against a
-stated requirement rather than an acceptable limitation. Video containers are
-included deliberately: ffmpeg simply ignores the video stream and decodes the
-audio, so no conversion step is needed.
+Wrapped so the app still runs when Whisper or ffmpeg is missing, in which case
+the user pastes a transcript instead. Video containers are accepted because a
+lecture recording is usually a video file, and ffmpeg reads the audio from it.
 """
 
-# Containers ffmpeg can decode for Whisper. Video containers (mp4, webm) are
-# accepted because a lecture recording usually arrives as video.
+# Containers ffmpeg can decode. Video files are included on purpose.
 ACCEPTED_AUDIO_FORMATS = ["mp3", "wav", "m4a", "mp4", "webm", "flac", "ogg"]
 
-# The Whisper sizes compared for the word error rate evidence in the
-# Evaluation chapter. Ordered smallest to largest, which is also increasing
-# accuracy and increasing runtime.
+# Whisper sizes available in the app, ordered from smallest to largest. The
+# evaluation compares tiny, base and small.
 WHISPER_MODEL_SIZES = ["tiny", "base", "small", "medium"]
 
 

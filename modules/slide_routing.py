@@ -1,84 +1,41 @@
-"""Decide, per slide, whether the vision model is worth calling.
+"""Decide, per slide, whether to call the vision model.
 
-The system previously chose one extraction path for a whole deck. Every page
-was either read cheaply from the text layer or sent to the vision-language
-model, and the choice was made once. Measurement across 111 corpus slides
-showed that to be wrong in both directions at once: 52 per cent of slides
-gained at least 30 per cent novel content from the vision call, and the other
-48 per cent received an eight second model call that largely re-transcribed
-text the PDF text layer already held perfectly.
+Slides that are mostly pictures usually gain new content from a vision call,
+while text slides mostly repeat what the text layer already holds.
 
-This module makes the choice per slide, from features computable before any
-model call is made.
+The rule:
+  PowerPoint, send the slide when pictures cover at least 10 per cent of it.
+  PDF, where picture area cannot be read, send it when the text layer returns
+  fewer than 60 words.
 
-The rule
---------
-On PowerPoint input, call the vision model when pictures occupy at least 10
-per cent of the slide. Measured on 81 PowerPoint slides that gives recall
-0.87 and precision 0.85 while removing 42 per cent of the model calls.
+Both thresholds were set from measurements taken on the evaluation corpus.
+Recall is favoured over precision, because a skipped slide loses its diagram
+from the output while an unnecessary call only costs time.
 
-A picture counts whether it was inserted as a free picture or dropped into a
-content placeholder. PowerPoint stores the second kind as a placeholder shape
-rather than a picture shape, and the first version of this rule missed it.
-One corpus slide was affected, and it held 366 words of diagram content that
-the vision model recovered. See is_picture_shape below.
-
-Picture area is by some distance the best predictor available. Correlated
-against the novel content a vision call actually produced, it scores +0.715,
-where text yield scores -0.485 and everything else tested scores below 0.3.
-
-On PDF input that feature is not recoverable. A deck built on full bleed
-background artwork reports an image area of 1.000 on every page once
-rendered, which is exactly what one corpus deck does, and the PDF-derived
-version of the same idea collapses from +0.715 to +0.233. The fallback is
-text yield: call the vision model when the text layer returns fewer than 60
-words. That gives recall 0.74 and precision 0.63, saving 39 per cent. It is
-reported as the weaker rule rather than averaged with the stronger one.
-
-Why the thresholds sit where they do
-------------------------------------
-Recall is preferred over precision at the margin, because the two errors are
-not symmetric. A slide wrongly skipped loses its diagram description
-permanently and silently. A slide wrongly sent costs about eight seconds.
-Raising the picture-area threshold to 0.20 would save 59 per cent of calls
-instead of 42, but recall falls from 0.87 to 0.63, and losing over a third of
-the diagram content to save half a minute on a deck is a bad trade for a
-revision tool.
-
-This module is imported by evaluation/route_instrumentation.py, which is the
-harness the threshold was derived from, so the shipped rule and the measured
-rule cannot drift apart.
+evaluation/route_instrumentation.py imports this module, so both use the same
+routing logic when deciding which slides need vision processing.
 """
 from pathlib import Path
 
-# Route to the vision model at or above this fraction of the slide given over
-# to pictures. PowerPoint input only.
+# Send to the vision model at or above this share of a slide. PowerPoint only.
 PICTURE_AREA_THRESHOLD = 0.10
 
-# Fallback for PDF input, where picture area is not measurable: route to the
-# vision model when the text layer yields fewer than this many words.
+# PDF fallback: send the slide when the text layer gives fewer words than this.
 TEXT_WORDS_THRESHOLD = 60
 
 ROUTE_VISION = "vision"
 ROUTE_TEXT = "text layer"
 
-# Written into the assembled output so a reader, and the evaluation, can see
-# which path produced each page. Kept short because it sits in the extracted
-# text a student may read.
+# Stamped on every page so the output shows which path produced it.
 ROUTE_MARKER = "[extracted by: {route}]"
 
 
 def is_picture_shape(shape):
-    """True when a PowerPoint shape holds a picture.
+    """True when a shape holds a picture.
 
-    Two cases count. A picture inserted directly is a picture shape. A
-    picture dropped into a content placeholder is stored as a placeholder
-    whose element is still a picture element (p:pic), so its shape type
-    reads as PLACEHOLDER and a check on shape type alone misses it. That gap
-    was found on a real lecture slide, where it hid a picture covering 47 per
-    cent of the slide from the rule.
-
-    A placeholder that holds text, a chart or a table is not a picture.
+    Counts a normal picture and a picture dropped into a content placeholder.
+    PowerPoint stores the second kind as a placeholder, so checking the shape
+    type alone misses it. Text, chart and table placeholders do not count.
     """
     try:
         from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -98,16 +55,12 @@ def is_picture_shape(shape):
 
 
 def pptx_picture_area_ratios(path):
-    """Return {slide_number: fraction of the slide occupied by pictures}.
+    """Return {slide number: share of the slide covered by pictures}.
 
-    Read straight from the PowerPoint file, so it costs no rendering and no
-    model call. Returns an empty mapping for any input that is not a readable
-    pptx, which is what makes the caller fall back to text yield.
-
-    Pictures held in content placeholders count as well as free pictures,
-    through is_picture_shape. Overlapping pictures are summed and the total
-    is capped at 1.0, so the value means "how much of this slide is given
-    over to imagery" rather than an exact non-overlapping area.
+    Picture areas are read directly from the PowerPoint file without rendering
+    the slides or calling a model. Returns {} for anything that is not a
+    readable pptx, which is what makes the caller fall back to text yield.
+    Overlapping pictures are summed and the total is capped at 1.0.
     """
     if Path(str(path)).suffix.lower() != ".pptx":
         return {}
@@ -141,9 +94,9 @@ def decide(picture_area_ratio=None, text_layer_words=None,
            picture_threshold=None, words_threshold=None):
     """Return (route, reason) for one slide.
 
-    picture_area_ratio is used when it is available, because it is the far
-    better predictor. text_layer_words is the fallback. The reason string is
-    returned so a run can be audited afterwards rather than only counted.
+    Use picture area for PowerPoint slides and text-layer word count for PDF
+    pages. The reason is returned so a run can be checked afterwards rather
+    than only counted.
     """
     if picture_threshold is None:
         picture_threshold = PICTURE_AREA_THRESHOLD
@@ -166,9 +119,8 @@ def decide(picture_area_ratio=None, text_layer_words=None,
         return ROUTE_TEXT, (
             f"the text layer yields {text_layer_words} words")
 
-    # Nothing to decide on. Prefer the vision model, because the cost of
-    # skipping a slide that needed it is permanent and the cost of calling
-    # one that did not is seconds.
+    # Nothing to go on, so default to the vision model. A missed diagram is
+    # not recovered later, while an unnecessary call only costs time.
     return ROUTE_VISION, "no routing features available, defaulting to vision"
 
 
@@ -189,24 +141,18 @@ def summarise(report):
 def extract_routed(input_path, client, dpi=None, max_pages=None,
                    picture_threshold=None, words_threshold=None,
                    on_page=None):
-    """Extract a deck, choosing a path per slide instead of per deck.
+    """Extract a deck, choosing the path slide by slide.
 
-    A PowerPoint file is converted to PDF once, exactly as the extractor
-    comparison does, so every input is handled identically after that point
-    and the routing rule does not need to know about PowerPoint. Picture
-    areas are read from the original pptx, because that is the feature the
-    rule prefers and it is not recoverable from the rendered page.
+    A PowerPoint file is converted to PDF once, so every input is handled the
+    same way after that. Picture areas are read from the original pptx,
+    because they cannot be recovered from a rendered page.
 
-    Each slide then goes one of two ways. A slide the rule sends to the
-    vision model is rendered and extracted with the same retry and empty
-    reply detection a whole-deck run uses. A slide it does not send is taken
-    from the PDF text layer at no cost at all.
+    A routed slide is rendered and sent to the vision model with the same
+    retry and empty reply checks a whole-deck run uses. Slides not sent to the
+    vision model are read from the PDF text layer without a model call.
 
-    on_page, when given, is called as on_page(number, route, reason, seconds)
-    after each slide, so a long run can report progress without this function
-    knowing anything about logging.
-
-    Returns (text, report).
+    on_page(number, route, reason, seconds) is called after each slide, so a
+    long run can report progress. Returns (text, report).
     """
     import time
     import tempfile

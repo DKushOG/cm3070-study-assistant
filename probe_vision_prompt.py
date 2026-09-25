@@ -26,12 +26,12 @@ This script tests whether the same move works here, on the same pages.
 
   P1  the current instruction, unchanged            the baseline
   P2  a firmer instruction naming both sections     is wording enough?
-  P3  a JSON schema with both fields required       the C1 technique
+  P3  a JSON schema with both fields required       as used for the quiz
 
 Ollama's native API accepts a `format` object, which is a schema enforced at
 decode time rather than a request. If P3 produces a description on every page
 where P1 and P2 do not, the vision path gets the same treatment as the quiz
-path and the report gets one technique applied to two subsystems.
+path and one technique covers both.
 
 Pages are chosen as two where description is essential and two where it is
 not, so a schema that forces description onto a plain bulleted slide shows up

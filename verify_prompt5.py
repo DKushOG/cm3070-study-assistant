@@ -1,11 +1,13 @@
-"""Offline verification harness for the prompt 5 changes.
+"""Offline verification harness for the fifth round of changes.
 
-This is a verification harness for the author's own use. It is **not part of
-the system**: nothing in the application imports it, and it must never be
-imported by `app.py`, `core/`, `modules/` or `evaluation/`. It exists so the
-three changes can be checked without a model, without a network connection and
-without starting the interface, because a verification cycle that needs a real
-run costs about thirty minutes.
+"Prompt 5" is the fifth batch of changes made during development, covering the
+quiz retry seeds, the source basis check and the question shape warning.
+
+A development tool, not part of the system. Nothing in the application imports
+it, and nothing in `app.py`, `core/`, `modules/` or `evaluation/` should. It
+exists so the three changes can be checked without a model, without a network
+connection and without starting the interface, because a verification cycle
+that needs a real run costs about thirty minutes.
 
 Run it from the project root:
 
@@ -31,9 +33,9 @@ from evaluation import revalidate_outputs as ro
 OUTPUTS_DIR = "outputs"
 
 # Verdicts recorded by evaluation/revalidate_outputs.py over the whole outputs
-# folder BEFORE any prompt 5 change, captured by running it on the unmodified
-# code. Check 3 compares the current verdicts against these so a change is
-# visible rather than silent.
+# folder before any of these changes, captured by running it on the unmodified
+# code. Check 3 compares the current verdicts against these, so a change shows
+# up rather than passing unnoticed.
 BASELINE_BEFORE = {
     "20260813_205536_156923_combined_transcript_and_slide_text.txt": (0, False, False),
     "20260813_205845_918490_combined_transcript_and_slide_text.txt": (0, False, False),

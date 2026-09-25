@@ -1,9 +1,16 @@
+"""Tests for the text cleaning helpers.
+
+Part of the context, prompts and provenance group.
+"""
+
 import unittest
 
 from core.cleaning import clean_text, truncate_words
 
 
 class CleanTextTests(unittest.TestCase):
+    """Line endings are normalised, lines are stripped and blank lines go."""
+
     def test_strips_lines_and_drops_empty_lines(self):
         raw = "  first line  \n\n   \n  second line\n"
         self.assertEqual(clean_text(raw), "first line\nsecond line")
@@ -17,6 +24,8 @@ class CleanTextTests(unittest.TestCase):
 
 
 class TruncateWordsTests(unittest.TestCase):
+    """Text is cut to the word cap only when it is over it."""
+
     def test_short_text_unchanged(self):
         text, truncated = truncate_words("one two three", 5)
         self.assertEqual(text, "one two three")

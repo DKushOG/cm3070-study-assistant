@@ -1,10 +1,8 @@
 """Tests for choosing and running a slide extraction method.
 
-The interface calls modules/slide_extraction.py, so these tests are what
-stand behind the claim that the application offers per-slide routing by
-default, reads the whole deck and reports slides the vision model could not
-read. Every optional dependency and every model call is replaced, so no
-test here needs PyMuPDF, LibreOffice, python-pptx or a running model.
+Part of the extraction method dispatch group. The interface offers whichever
+methods can run for the uploaded file, and that choice is tested here rather
+than through Streamlit.
 """
 import unittest
 from unittest import mock
@@ -41,6 +39,8 @@ class _Available:
 
 
 class OfferedMethodTests(unittest.TestCase):
+    """Which methods are offered for each file type, and in what order."""
+
     def test_routing_is_offered_first_for_a_powerpoint_deck(self):
         with _Available():
             paths = se.paths_for(".pptx")
@@ -84,6 +84,8 @@ class OfferedMethodTests(unittest.TestCase):
 
 
 class DefaultsTests(unittest.TestCase):
+    """The shipped defaults: vision model, page cap and quiz path."""
+
     def test_vision_model_default_is_the_selected_model(self):
         """The rejected model must not come back as the default."""
         self.assertEqual(config.VISION_MODEL, "qwen2.5vl:7b")
@@ -100,6 +102,8 @@ class DefaultsTests(unittest.TestCase):
 
 
 class ExtractDispatchTests(unittest.TestCase):
+    """Each method runs the code it should and reports what it did."""
+
     def test_routing_passes_the_page_cap_and_reports_its_summary(self):
         report = {"pages": 10, "vision_pages": 4, "text_pages": 6,
                   "unreadable_pages": [], "truncated_pages": []}
