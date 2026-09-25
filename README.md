@@ -186,6 +186,7 @@ evaluation/                 Measurement harnesses
 tests/                      263 unit and integration tests
 docs/
   requirements_traceability.md   Requirements mapped to code and tests
+  PIN_CONTEXT.md                 Why the text model is built with num_ctx pinned
 ```
 
 Development scripts sit at the top level beside these. `probe_context.py`,
